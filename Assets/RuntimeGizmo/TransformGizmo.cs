@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using System.Collections.Generic;
 using System.Collections;
 using CommandUndoRedo;
@@ -43,10 +44,6 @@ namespace RuntimeGizmos
 		public Color selectedColor = new Color(1, 1, 0, 0.8f);
 		public Color hoverColor = new Color(1, .75f, 0, 0.8f);
 		public float planesOpacity = .5f;
-		//public Color rectPivotColor = new Color(0, 0, 1, 0.8f);
-		//public Color rectCornerColor = new Color(0, 0, 1, 0.8f);
-		//public Color rectAnchorColor = new Color(.7f, .7f, .7f, 0.8f);
-		//public Color rectLineColor = new Color(.7f, .7f, .7f, 0.8f);
 
 		public float movementSnap = .25f;
 		public float rotationSnap = 15f;
@@ -134,8 +131,14 @@ namespace RuntimeGizmos
 			SetMaterial();
 		}
 
+		void RenderPipelineManager_endFrameRendering(ScriptableRenderContext context, Camera[] camera)
+		{
+			OnPostRender();
+		}
+		
 		void OnEnable()
 		{
+			RenderPipelineManager.endFrameRendering += RenderPipelineManager_endFrameRendering;
 			forceUpdatePivotCoroutine = StartCoroutine(ForceUpdatePivotPointAtEndOfFrame());
 		}
 
@@ -143,6 +146,7 @@ namespace RuntimeGizmos
 		{
 			ClearTargets(); //Just so things gets cleaned up, such as removing any materials we placed on objects.
 
+			RenderPipelineManager.endFrameRendering -= RenderPipelineManager_endFrameRendering;
 			StopCoroutine(forceUpdatePivotCoroutine);
 		}
 
