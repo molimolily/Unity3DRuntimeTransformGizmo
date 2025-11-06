@@ -5,9 +5,13 @@ using System.Collections.Generic;
 using System.Collections;
 using CommandUndoRedo;
 
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+using UnityEngine.InputSystem;
+#endif
+
 namespace RuntimeGizmos
 {
-	//To be safe, if you are changing any transforms hierarchy, such as parenting an object to something,
+        //To be safe, if you are changing any transforms hierarchy, such as parenting an object to something,
 	//you should call ClearTargets before doing so just to be sure nothing unexpected happens... as well as call UndoRedoManager.Clear()
 	//For example, if you select an object that has children, move the children elsewhere, deselect the original object, then try to add those old children to the selection, I think it wont work.
 
@@ -20,22 +24,116 @@ namespace RuntimeGizmos
 		public CenterType centerType = CenterType.All;
 		public ScaleType scaleType = ScaleType.FromPoint;
 
-		//These are the same as the unity editor hotkeys
-		public KeyCode SetMoveType = KeyCode.W;
-		public KeyCode SetRotateType = KeyCode.E;
-		public KeyCode SetScaleType = KeyCode.R;
-		//public KeyCode SetRectToolType = KeyCode.T;
-		public KeyCode SetAllTransformType = KeyCode.Y;
-		public KeyCode SetSpaceToggle = KeyCode.X;
-		public KeyCode SetPivotModeToggle = KeyCode.Z;
-		public KeyCode SetCenterTypeToggle = KeyCode.C;
-		public KeyCode SetScaleTypeToggle = KeyCode.S;
-		public KeyCode translationSnapping = KeyCode.LeftControl;
-		public KeyCode AddSelection = KeyCode.LeftShift;
-		public KeyCode RemoveSelection = KeyCode.LeftControl;
-		public KeyCode ActionKey = KeyCode.LeftShift; //Its set to shift instead of control so that while in the editor we dont accidentally undo editor changes =/
-		public KeyCode UndoAction = KeyCode.Z;
-		public KeyCode RedoAction = KeyCode.Y;
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                [Serializable]
+                public class InputActionBindings
+                {
+                        public InputActionReference SetMoveType;
+                        public InputActionReference SetRotateType;
+                        public InputActionReference SetScaleType;
+                        //public InputActionReference SetRectToolType;
+                        public InputActionReference SetAllTransformType;
+                        public InputActionReference SetSpaceToggle;
+                        public InputActionReference SetPivotModeToggle;
+                        public InputActionReference SetCenterTypeToggle;
+                        public InputActionReference SetScaleTypeToggle;
+                        public InputActionReference TranslationSnapping;
+                        public InputActionReference AddSelection;
+                        public InputActionReference RemoveSelection;
+                        public InputActionReference ActionKey;
+                        public InputActionReference UndoAction;
+                        public InputActionReference RedoAction;
+
+                        public IEnumerable<InputActionReference> GetAllBindings()
+			{
+                                yield return SetMoveType;
+                                yield return SetRotateType;
+                                yield return SetScaleType;
+                                //yield return SetRectToolType;
+                                yield return SetAllTransformType;
+                                yield return SetSpaceToggle;
+                                yield return SetPivotModeToggle;
+                                yield return SetCenterTypeToggle;
+                                yield return SetScaleTypeToggle;
+                                yield return TranslationSnapping;
+                                yield return AddSelection;
+                                yield return RemoveSelection;
+                                yield return ActionKey;
+                                yield return UndoAction;
+                                yield return RedoAction;
+                        }
+                }
+
+                [SerializeField]
+                InputActionBindings inputActions = new InputActionBindings();
+
+                HashSet<InputAction> enabledInputActions = new HashSet<InputAction>();
+
+                void EnableAssignedInputActions()
+                {
+                        if(inputActions == null)
+			{
+                                enabledInputActions.Clear();
+                                return;
+                        }
+
+                        enabledInputActions.Clear();
+
+                        foreach(InputActionReference reference in inputActions.GetAllBindings())
+                        {
+                                InputAction action = reference != null ? reference.action : null;
+                                if(action == null) continue;
+
+                                if(!action.enabled)
+                                {
+                                        action.Enable();
+                                        enabledInputActions.Add(action);
+                                }
+                        }
+                }
+
+                void DisableAssignedInputActions()
+                {
+                        foreach(InputAction action in enabledInputActions)
+                        {
+                                if(action != null && action.enabled)
+                                {
+                                        action.Disable();
+                                }
+                        }
+
+                        enabledInputActions.Clear();
+                }
+
+                static bool WasActionPressedThisFrame(InputActionReference actionReference)
+                {
+                        InputAction action = actionReference != null ? actionReference.action : null;
+                        return action != null && action.triggered;
+                }
+
+                static bool IsActionPressed(InputActionReference actionReference)
+                {
+                        InputAction action = actionReference != null ? actionReference.action : null;
+                        return action != null && action.IsPressed();
+                }
+#else
+                //These are the same as the unity editor hotkeys
+                public KeyCode SetMoveType = KeyCode.W;
+                public KeyCode SetRotateType = KeyCode.E;
+                public KeyCode SetScaleType = KeyCode.R;
+                //public KeyCode SetRectToolType = KeyCode.T;
+                public KeyCode SetAllTransformType = KeyCode.Y;
+                public KeyCode SetSpaceToggle = KeyCode.X;
+                public KeyCode SetPivotModeToggle = KeyCode.Z;
+                public KeyCode SetCenterTypeToggle = KeyCode.C;
+                public KeyCode SetScaleTypeToggle = KeyCode.S;
+                public KeyCode translationSnapping = KeyCode.LeftControl;
+                public KeyCode AddSelection = KeyCode.LeftShift;
+                public KeyCode RemoveSelection = KeyCode.LeftControl;
+                public KeyCode ActionKey = KeyCode.LeftShift; //Its set to shift instead of control so that while in the editor we dont accidentally undo editor changes =/
+                public KeyCode UndoAction = KeyCode.Z;
+                public KeyCode RedoAction = KeyCode.Y;
+#endif
 
 		public Color xColor = new Color(1, 0, 0, 0.8f);
 		public Color yColor = new Color(0, 1, 0, 0.8f);
@@ -136,19 +234,27 @@ namespace RuntimeGizmos
 			OnPostRender();
 		}
 		
-		void OnEnable()
-		{
-			RenderPipelineManager.endFrameRendering += RenderPipelineManager_endFrameRendering;
-			forceUpdatePivotCoroutine = StartCoroutine(ForceUpdatePivotPointAtEndOfFrame());
-		}
+                void OnEnable()
+                {
+                        RenderPipelineManager.endFrameRendering += RenderPipelineManager_endFrameRendering;
+                        forceUpdatePivotCoroutine = StartCoroutine(ForceUpdatePivotPointAtEndOfFrame());
 
-		void OnDisable()
-		{
-			ClearTargets(); //Just so things gets cleaned up, such as removing any materials we placed on objects.
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        EnableAssignedInputActions();
+#endif
+                }
 
-			RenderPipelineManager.endFrameRendering -= RenderPipelineManager_endFrameRendering;
-			StopCoroutine(forceUpdatePivotCoroutine);
-		}
+                void OnDisable()
+                {
+                        ClearTargets(); //Just so things gets cleaned up, such as removing any materials we placed on objects.
+
+                        RenderPipelineManager.endFrameRendering -= RenderPipelineManager_endFrameRendering;
+                        StopCoroutine(forceUpdatePivotCoroutine);
+
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        DisableAssignedInputActions();
+#endif
+                }
 
 		void OnDestroy()
 		{
@@ -253,22 +359,36 @@ namespace RuntimeGizmos
 			return color;
 		}
 
-		void HandleUndoRedo()
-		{
-			if(maxUndoStored != UndoRedoManager.maxUndoStored) { UndoRedoManager.maxUndoStored = maxUndoStored; }
+                void HandleUndoRedo()
+                {
+                        if(maxUndoStored != UndoRedoManager.maxUndoStored) { UndoRedoManager.maxUndoStored = maxUndoStored; }
 
-			if(GizmoInput.GetKey(ActionKey))
-			{
-				if(GizmoInput.GetKeyDown(UndoAction))
-				{
-					UndoRedoManager.Undo();
-				}
-				else if(GizmoInput.GetKeyDown(RedoAction))
-				{
-					UndoRedoManager.Redo();
-				}
-			}
-		}
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(IsActionPressed(inputActions.ActionKey))
+                        {
+                                if(WasActionPressedThisFrame(inputActions.UndoAction))
+                                {
+                                        UndoRedoManager.Undo();
+                                }
+                                else if(WasActionPressedThisFrame(inputActions.RedoAction))
+                                {
+                                        UndoRedoManager.Redo();
+                                }
+                        }
+#else
+                        if(GizmoInput.GetKey(ActionKey))
+                        {
+                                if(GizmoInput.GetKeyDown(UndoAction))
+                                {
+                                        UndoRedoManager.Undo();
+                                }
+                                else if(GizmoInput.GetKeyDown(RedoAction))
+                                {
+                                        UndoRedoManager.Redo();
+                                }
+                        }
+#endif
+                }
 
 		//We only support scaling in local space.
 		public TransformSpace GetProperTransformSpace()
@@ -307,51 +427,79 @@ namespace RuntimeGizmos
 			return length;
 		}
 
-		void SetSpaceAndType()
-		{
-			if(GizmoInput.GetKey(ActionKey)) return;
+                void SetSpaceAndType()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(IsActionPressed(inputActions.ActionKey)) return;
+#else
+                        if(GizmoInput.GetKey(ActionKey)) return;
+#endif
 
-			if(GizmoInput.GetKeyDown(SetMoveType)) transformType = TransformType.Move;
-			else if(GizmoInput.GetKeyDown(SetRotateType)) transformType = TransformType.Rotate;
-			else if(GizmoInput.GetKeyDown(SetScaleType)) transformType = TransformType.Scale;
-			//else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
-			else if(GizmoInput.GetKeyDown(SetAllTransformType)) transformType = TransformType.All;
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(WasActionPressedThisFrame(inputActions.SetMoveType)) transformType = TransformType.Move;
+                        else if(WasActionPressedThisFrame(inputActions.SetRotateType)) transformType = TransformType.Rotate;
+                        else if(WasActionPressedThisFrame(inputActions.SetScaleType)) transformType = TransformType.Scale;
+                        //else if(WasActionPressedThisFrame(inputActions.SetRectToolType)) type = TransformType.RectTool;
+                        else if(WasActionPressedThisFrame(inputActions.SetAllTransformType)) transformType = TransformType.All;
+#else
+                        if(GizmoInput.GetKeyDown(SetMoveType)) transformType = TransformType.Move;
+                        else if(GizmoInput.GetKeyDown(SetRotateType)) transformType = TransformType.Rotate;
+                        else if(GizmoInput.GetKeyDown(SetScaleType)) transformType = TransformType.Scale;
+                        //else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
+                        else if(GizmoInput.GetKeyDown(SetAllTransformType)) transformType = TransformType.All;
+#endif
 
-			if(!isTransforming) translatingType = transformType;
+                        if(!isTransforming) translatingType = transformType;
 
-			if(GizmoInput.GetKeyDown(SetPivotModeToggle))
-			{
-				if(pivot == TransformPivot.Pivot) pivot = TransformPivot.Center;
-				else if(pivot == TransformPivot.Center) pivot = TransformPivot.Pivot;
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(WasActionPressedThisFrame(inputActions.SetPivotModeToggle))
+#else
+                        if(GizmoInput.GetKeyDown(SetPivotModeToggle))
+#endif
+                        {
+                                if(pivot == TransformPivot.Pivot) pivot = TransformPivot.Center;
+                                else if(pivot == TransformPivot.Center) pivot = TransformPivot.Pivot;
 
-				SetPivotPoint();
-			}
+                                SetPivotPoint();
+                        }
 
-			if(GizmoInput.GetKeyDown(SetCenterTypeToggle))
-			{
-				if(centerType == CenterType.All) centerType = CenterType.Solo;
-				else if(centerType == CenterType.Solo) centerType = CenterType.All;
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(WasActionPressedThisFrame(inputActions.SetCenterTypeToggle))
+#else
+                        if(GizmoInput.GetKeyDown(SetCenterTypeToggle))
+#endif
+                        {
+                                if(centerType == CenterType.All) centerType = CenterType.Solo;
+                                else if(centerType == CenterType.Solo) centerType = CenterType.All;
 
-				SetPivotPoint();
-			}
+                                SetPivotPoint();
+                        }
 
-			if(GizmoInput.GetKeyDown(SetSpaceToggle))
-			{
-				if(space == TransformSpace.Global) space = TransformSpace.Local;
-				else if(space == TransformSpace.Local) space = TransformSpace.Global;
-			}
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(WasActionPressedThisFrame(inputActions.SetSpaceToggle))
+#else
+                        if(GizmoInput.GetKeyDown(SetSpaceToggle))
+#endif
+                        {
+                                if(space == TransformSpace.Global) space = TransformSpace.Local;
+                                else if(space == TransformSpace.Local) space = TransformSpace.Global;
+                        }
 
-			if(GizmoInput.GetKeyDown(SetScaleTypeToggle))
-			{
-				if(scaleType == ScaleType.FromPoint) scaleType = ScaleType.FromPointOffset;
-				else if(scaleType == ScaleType.FromPointOffset) scaleType = ScaleType.FromPoint;
-			}
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(WasActionPressedThisFrame(inputActions.SetScaleTypeToggle))
+#else
+                        if(GizmoInput.GetKeyDown(SetScaleTypeToggle))
+#endif
+                        {
+                                if(scaleType == ScaleType.FromPoint) scaleType = ScaleType.FromPointOffset;
+                                else if(scaleType == ScaleType.FromPointOffset) scaleType = ScaleType.FromPoint;
+                        }
 
-			if(transformType == TransformType.Scale)
-			{
-				if(pivot == TransformPivot.Pivot) scaleType = ScaleType.FromPoint; //FromPointOffset can be inaccurate and should only really be used in Center mode if desired.
-			}
-		}
+                        if(transformType == TransformType.Scale)
+                        {
+                                if(pivot == TransformPivot.Pivot) scaleType = ScaleType.FromPoint; //FromPointOffset can be inaccurate and should only really be used in Center mode if desired.
+                        }
+                }
 
 		void TransformSelected()
 		{
@@ -392,7 +540,11 @@ namespace RuntimeGizmos
 			{
 				Ray mouseRay = myCamera.ScreenPointToRay(GizmoInput.MousePosition);
 				Vector3 mousePosition = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, originalPivot, planeNormal);
-				bool isSnapping = GizmoInput.GetKey(translationSnapping);
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                                bool isSnapping = IsActionPressed(inputActions.TranslationSnapping);
+#else
+                                bool isSnapping = GizmoInput.GetKey(translationSnapping);
+#endif
 
 				if(previousMousePosition != Vector3.zero && mousePosition != Vector3.zero)
 				{
@@ -637,8 +789,13 @@ namespace RuntimeGizmos
 		{
 			if(nearAxis == Axis.None && GizmoInput.GetMouseButtonDown(0))
 			{
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+				bool isAdding = IsActionPressed(inputActions.AddSelection);
+				bool isRemoving = IsActionPressed(inputActions.RemoveSelection);
+#else
 				bool isAdding = GizmoInput.GetKey(AddSelection);
 				bool isRemoving = GizmoInput.GetKey(RemoveSelection);
+#endif
 
 				RaycastHit hitInfo; 
 				if(Physics.Raycast(myCamera.ScreenPointToRay(GizmoInput.MousePosition), out hitInfo, Mathf.Infinity, selectionMask))
