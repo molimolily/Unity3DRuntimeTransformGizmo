@@ -56,10 +56,10 @@ namespace RuntimeGizmos
 		{
 			ShowProperGizmoType();
 
-			if(Input.GetMouseButtonDown(0))
+			if(GizmoInput.GetMouseButtonDown(0))
 			{
 				RaycastHit hitInfo;
-				if(Physics.Raycast(transformGizmo.myCamera.ScreenPointToRay(Input.mousePosition), out hitInfo, Mathf.Infinity, mask))
+				if(Physics.Raycast(transformGizmo.myCamera.ScreenPointToRay(GizmoInput.MousePosition), out hitInfo, Mathf.Infinity, mask))
 				{
 					Axis selectedAxis = Axis.None;
 					TransformType type = transformGizmo.transformType;
