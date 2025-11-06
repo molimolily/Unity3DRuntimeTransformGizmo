@@ -37,6 +37,9 @@ namespace RuntimeGizmos
                         public InputActionReference SetPivotModeToggle;
                         public InputActionReference SetCenterTypeToggle;
                         public InputActionReference SetScaleTypeToggle;
+                        public InputActionReference PointerPosition;
+                        public InputActionReference PointerDelta;
+                        public InputActionReference PointerPress;
                         public InputActionReference TranslationSnapping;
                         public InputActionReference AddSelection;
                         public InputActionReference RemoveSelection;
@@ -55,6 +58,9 @@ namespace RuntimeGizmos
                                 yield return SetPivotModeToggle;
                                 yield return SetCenterTypeToggle;
                                 yield return SetScaleTypeToggle;
+                                yield return PointerPosition;
+                                yield return PointerDelta;
+                                yield return PointerPress;
                                 yield return TranslationSnapping;
                                 yield return AddSelection;
                                 yield return RemoveSelection;
@@ -135,7 +141,74 @@ namespace RuntimeGizmos
                 public KeyCode RedoAction = KeyCode.Y;
 #endif
 
-		public Color xColor = new Color(1, 0, 0, 0.8f);
+                Vector3 GetPointerPosition()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(inputActions != null)
+                        {
+                                InputAction action = inputActions.PointerPosition != null ? inputActions.PointerPosition.action : null;
+                                if(action != null)
+                                {
+                                        Vector2 position = action.ReadValue<Vector2>();
+                                        return new Vector3(position.x, position.y, 0f);
+                                }
+                        }
+#endif
+                        return GizmoInput.MousePosition;
+                }
+
+                Vector2 GetPointerDelta()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(inputActions != null)
+                        {
+                                InputAction action = inputActions.PointerDelta != null ? inputActions.PointerDelta.action : null;
+                                if(action != null)
+                                {
+                                        return action.ReadValue<Vector2>();
+                                }
+                        }
+#endif
+                        return new Vector2(GizmoInput.GetMouseAxis("Mouse X"), GizmoInput.GetMouseAxis("Mouse Y"));
+                }
+
+                bool IsPointerPressed()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(inputActions != null)
+                        {
+                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+                                if(action != null) return action.IsPressed();
+                        }
+#endif
+                        return GizmoInput.GetMouseButton(0);
+                }
+
+                bool WasPointerPressedThisFrame()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(inputActions != null)
+                        {
+                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+                                if(action != null) return action.WasPressedThisFrame();
+                        }
+#endif
+                        return GizmoInput.GetMouseButtonDown(0);
+                }
+
+                bool WasPointerReleasedThisFrame()
+                {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+                        if(inputActions != null)
+                        {
+                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+                                if(action != null) return action.WasReleasedThisFrame();
+                        }
+#endif
+                        return GizmoInput.GetMouseButtonUp(0);
+                }
+
+                public Color xColor = new Color(1, 0, 0, 0.8f);
 		public Color yColor = new Color(0, 1, 0, 0.8f);
 		public Color zColor = new Color(0, 0, 1, 0.8f);
 		public Color allColor = new Color(.7f, .7f, .7f, 0.8f);
@@ -503,13 +576,13 @@ namespace RuntimeGizmos
 
 		void TransformSelected()
 		{
-			if(mainTargetRoot != null)
-			{
-				if(nearAxis != Axis.None && GizmoInput.GetMouseButtonDown(0))
-				{
-					StartCoroutine(TransformSelected(translatingType));
-				}
-			}
+                        if(mainTargetRoot != null)
+                        {
+                                if(nearAxis != Axis.None && WasPointerPressedThisFrame())
+                                {
+                                        StartCoroutine(TransformSelected(translatingType));
+                                }
+                        }
 		}
 		
 		IEnumerator TransformSelected(TransformType transType)
@@ -536,10 +609,12 @@ namespace RuntimeGizmos
 				transformCommands.Add(new TransformCommand(this, targetRootsOrdered[i]));
 			}
 
-			while(!GizmoInput.GetMouseButtonUp(0))
-			{
-				Ray mouseRay = myCamera.ScreenPointToRay(GizmoInput.MousePosition);
-				Vector3 mousePosition = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, originalPivot, planeNormal);
+                        while(true)
+                        {
+                                if(WasPointerReleasedThisFrame()) break;
+
+                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+                                Vector3 mousePosition = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, originalPivot, planeNormal);
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
                                 bool isSnapping = IsActionPressed(inputActions.TranslationSnapping);
 #else
@@ -667,12 +742,13 @@ namespace RuntimeGizmos
 						float rotateAmount = 0;
 						Vector3 rotationAxis = axis;
 
-						if(nearAxis == Axis.Any)
-						{
-							Vector3 rotation = transform.TransformDirection(new Vector3(GizmoInput.GetMouseAxis("Mouse Y"), -GizmoInput.GetMouseAxis("Mouse X"), 0));
-							Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
-							rotateAmount *= allRotateSpeedMultiplier;
-						}else{
+                                                if(nearAxis == Axis.Any)
+                                                {
+                                                        Vector2 pointerDelta = GetPointerDelta();
+                                                        Vector3 rotation = transform.TransformDirection(new Vector3(pointerDelta.y, -pointerDelta.x, 0));
+                                                        Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
+                                                        rotateAmount *= allRotateSpeedMultiplier;
+                                                }else{
 							if(circularRotationMethod)
 							{
 								float angle = Vector3.SignedAngle(previousMousePosition - originalPivot, mousePosition - originalPivot, axis);
@@ -787,23 +863,23 @@ namespace RuntimeGizmos
 	
 		void GetTarget()
 		{
-			if(nearAxis == Axis.None && GizmoInput.GetMouseButtonDown(0))
-			{
+                        if(nearAxis == Axis.None && WasPointerPressedThisFrame())
+                        {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-				bool isAdding = IsActionPressed(inputActions.AddSelection);
-				bool isRemoving = IsActionPressed(inputActions.RemoveSelection);
+                                bool isAdding = IsActionPressed(inputActions.AddSelection);
+                                bool isRemoving = IsActionPressed(inputActions.RemoveSelection);
 #else
 				bool isAdding = GizmoInput.GetKey(AddSelection);
 				bool isRemoving = GizmoInput.GetKey(RemoveSelection);
 #endif
 
 				RaycastHit hitInfo; 
-				if(Physics.Raycast(myCamera.ScreenPointToRay(GizmoInput.MousePosition), out hitInfo, Mathf.Infinity, selectionMask))
-				{
-					Transform target = hitInfo.transform;
+                                if(Physics.Raycast(myCamera.ScreenPointToRay(GetPointerPosition()), out hitInfo, Mathf.Infinity, selectionMask))
+                                {
+                                        Transform target = hitInfo.transform;
 
-					if(isAdding)
-					{
+                                        if(isAdding)
+                                        {
 						AddTarget(target);
 					}
 					else if(isRemoving)
@@ -1173,28 +1249,28 @@ namespace RuntimeGizmos
 			else if(xClosestDistance <= minSelectedDistanceCheck && xClosestDistance <= yClosestDistance && xClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.X);
 			else if(yClosestDistance <= minSelectedDistanceCheck && yClosestDistance <= xClosestDistance && yClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.Y);
 			else if(zClosestDistance <= minSelectedDistanceCheck && zClosestDistance <= xClosestDistance && zClosestDistance <= yClosestDistance) SetTranslatingAxis(type, Axis.Z);
-			else if(type == TransformType.Rotate && mainTargetRoot != null)
-			{
-				Ray mouseRay = myCamera.ScreenPointToRay(GizmoInput.MousePosition);
-				Vector3 mousePlaneHit = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, pivotPoint, (transform.position - pivotPoint).normalized);
-				if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetTranslatingAxis(type, Axis.Any);
-			}
-		}
+                        else if(type == TransformType.Rotate && mainTargetRoot != null)
+                        {
+                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+                                Vector3 mousePlaneHit = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, pivotPoint, (transform.position - pivotPoint).normalized);
+                                if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetTranslatingAxis(type, Axis.Any);
+                        }
+                }
 
-		float ClosestDistanceFromMouseToLines(List<Vector3> lines)
-		{
-			Ray mouseRay = myCamera.ScreenPointToRay(GizmoInput.MousePosition);
+                float ClosestDistanceFromMouseToLines(List<Vector3> lines)
+                {
+                        Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
 
-			float closestDistance = float.MaxValue;
+                        float closestDistance = float.MaxValue;
 			for(int i = 0; i + 1 < lines.Count; i++)
 			{
 				IntersectPoints points = Geometry.ClosestPointsOnSegmentToLine(lines[i], lines[i + 1], mouseRay.origin, mouseRay.direction);
 				float distance = Vector3.Distance(points.first, points.second);
-				if(distance < closestDistance)
-				{
-					closestDistance = distance;
-				}
-			}
+                                if(distance < closestDistance)
+                                {
+                                        closestDistance = distance;
+                                }
+                        }
 			return closestDistance;
 		}
 
@@ -1202,13 +1278,13 @@ namespace RuntimeGizmos
 		{
 			float closestDistance = float.MaxValue;
 
-			if(planePoints.Count >= 4)
-			{
-				Ray mouseRay = myCamera.ScreenPointToRay(GizmoInput.MousePosition);
+                        if(planePoints.Count >= 4)
+                        {
+                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
 
-				for(int i = 0; i < planePoints.Count; i += 4)
-				{
-					Plane plane = new Plane(planePoints[i], planePoints[i + 1], planePoints[i + 2]);
+                                for(int i = 0; i < planePoints.Count; i += 4)
+                                {
+                                        Plane plane = new Plane(planePoints[i], planePoints[i + 1], planePoints[i + 2]);
 
 					float distanceToPlane;
 					if(plane.Raycast(mouseRay, out distanceToPlane))
