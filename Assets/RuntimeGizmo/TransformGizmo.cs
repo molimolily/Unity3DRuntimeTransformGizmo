@@ -208,7 +208,7 @@ namespace RuntimeGizmos
                         return GizmoInput.GetMouseButtonUp(0);
                 }
 
-                public Color xColor = new Color(1, 0, 0, 0.8f);
+		public Color xColor = new Color(1, 0, 0, 0.8f);
 		public Color yColor = new Color(0, 1, 0, 0.8f);
 		public Color zColor = new Color(0, 0, 1, 0.8f);
 		public Color allColor = new Color(.7f, .7f, .7f, 0.8f);
@@ -233,7 +233,7 @@ namespace RuntimeGizmos
 		public float moveSpeedMultiplier = 1f;
 		public float scaleSpeedMultiplier = 1f;
 		public float rotateSpeedMultiplier = 1f;
-		public float allRotateSpeedMultiplier = 20f;
+		public float allRotateSpeedMultiplier = 1f;
 
 		public bool useFirstSelectedAsMain = true;
 

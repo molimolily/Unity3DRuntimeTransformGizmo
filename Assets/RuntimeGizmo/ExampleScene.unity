@@ -132,8 +132,8 @@ GameObject:
   m_Component:
   - component: {fileID: 343817366}
   - component: {fileID: 343817365}
-  - component: {fileID: 343817363}
-  - component: {fileID: 343817362}
+  - component: {fileID: 343817367}
+  - component: {fileID: 343817368}
   m_Layer: 0
   m_Name: TransformGizmoCamera
   m_TagString: MainCamera
@@ -141,77 +141,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &343817362
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 343817361}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c0ad0e8e55c95c4e931911c4b943a64, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  space: 0
-  transformType: 0
-  pivot: 0
-  centerType: 0
-  scaleType: 0
-  SetMoveType: 119
-  SetRotateType: 101
-  SetScaleType: 114
-  SetAllTransformType: 121
-  SetSpaceToggle: 120
-  SetPivotModeToggle: 122
-  SetCenterTypeToggle: 99
-  SetScaleTypeToggle: 115
-  translationSnapping: 306
-  AddSelection: 304
-  RemoveSelection: 306
-  ActionKey: 304
-  UndoAction: 122
-  RedoAction: 121
-  xColor: {r: 1, g: 0, b: 0, a: 0.8}
-  yColor: {r: 0, g: 1, b: 0, a: 0.8}
-  zColor: {r: 0, g: 0, b: 1, a: 0.8}
-  allColor: {r: 0.7, g: 0.7, b: 0.7, a: 0.8}
-  selectedColor: {r: 1, g: 1, b: 0, a: 0.8}
-  hoverColor: {r: 1, g: 0.75, b: 0, a: 0.8}
-  planesOpacity: 0.5
-  movementSnap: 0.25
-  rotationSnap: 15
-  scaleSnap: 1
-  handleLength: 0.25
-  handleWidth: 0.003
-  planeSize: 0.035
-  triangleSize: 0.03
-  boxSize: 0.03
-  circleDetail: 40
-  allMoveHandleLengthMultiplier: 1
-  allRotateHandleLengthMultiplier: 1.4
-  allScaleHandleLengthMultiplier: 1.6
-  minSelectedDistanceCheck: 0.01
-  moveSpeedMultiplier: 1
-  scaleSpeedMultiplier: 1
-  rotateSpeedMultiplier: 1
-  allRotateSpeedMultiplier: 20
-  useFirstSelectedAsMain: 1
-  circularRotationMethod: 0
-  forceUpdatePivotPointOnChange: 1
-  maxUndoStored: 100
-  manuallyHandleGizmo: 0
-  selectionMask:
-    serializedVersion: 2
-    m_Bits: 4294967291
---- !u!124 &343817363
-Behaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 343817361}
-  m_Enabled: 1
 --- !u!20 &343817365
 Camera:
   m_ObjectHideFlags: 0
@@ -278,6 +207,117 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &343817367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343817361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 1
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+--- !u!114 &343817368
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343817361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c0ad0e8e55c95c4e931911c4b943a64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  space: 1
+  transformType: 0
+  pivot: 0
+  centerType: 0
+  scaleType: 0
+  inputActions:
+    SetMoveType: {fileID: 109297811918659292, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetRotateType: {fileID: -5915272997554633063, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetScaleType: {fileID: 1514989886441728824, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetAllTransformType: {fileID: -5069639457483128892, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetSpaceToggle: {fileID: -3620719911758142168, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetPivotModeToggle: {fileID: -2474573358413970044, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetCenterTypeToggle: {fileID: -4084015585913675895, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    SetScaleTypeToggle: {fileID: 5583030600017023043, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    PointerPosition: {fileID: 211828885920546200, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    PointerDelta: {fileID: -3417572987701408821, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    PointerPress: {fileID: 2651345935010693082, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    TranslationSnapping: {fileID: -8312177539877652580, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    AddSelection: {fileID: 7362620340629384715, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    RemoveSelection: {fileID: 8415688872067522818, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    ActionKey: {fileID: -179573349065060074, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    UndoAction: {fileID: -5372470717941637602, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+    RedoAction: {fileID: -791060010548993760, guid: e41a011ff4904594bb619fbbf899cb1c, type: 3}
+  xColor: {r: 1, g: 0, b: 0, a: 0.8}
+  yColor: {r: 0, g: 1, b: 0, a: 0.8}
+  zColor: {r: 0, g: 0, b: 1, a: 0.8}
+  allColor: {r: 0.7, g: 0.7, b: 0.7, a: 0.8}
+  selectedColor: {r: 1, g: 1, b: 0, a: 0.8}
+  hoverColor: {r: 1, g: 0.75, b: 0, a: 0.8}
+  planesOpacity: 0.5
+  movementSnap: 0.25
+  rotationSnap: 15
+  scaleSnap: 1
+  handleLength: 0.25
+  handleWidth: 0.003
+  planeSize: 0.035
+  triangleSize: 0.03
+  boxSize: 0.03
+  circleDetail: 40
+  allMoveHandleLengthMultiplier: 1
+  allRotateHandleLengthMultiplier: 1.4
+  allScaleHandleLengthMultiplier: 1.6
+  minSelectedDistanceCheck: 0.01
+  moveSpeedMultiplier: 1
+  scaleSpeedMultiplier: 1
+  rotateSpeedMultiplier: 1
+  allRotateSpeedMultiplier: 1
+  useFirstSelectedAsMain: 1
+  circularRotationMethod: 0
+  forceUpdatePivotPointOnChange: 1
+  maxUndoStored: 100
+  manuallyHandleGizmo: 0
+  selectionMask:
+    serializedVersion: 2
+    m_Bits: 51
 --- !u!1 &1138828411
 GameObject:
   m_ObjectHideFlags: 0
@@ -288,6 +328,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1138828413}
   - component: {fileID: 1138828412}
+  - component: {fileID: 1138828414}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -372,7 +413,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1755359865
+--- !u!114 &1138828414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1138828411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+--- !u!1 &1532100541
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -380,10 +444,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1755359869}
-  - component: {fileID: 1755359868}
-  - component: {fileID: 1755359867}
-  - component: {fileID: 1755359866}
+  - component: {fileID: 1532100545}
+  - component: {fileID: 1532100544}
+  - component: {fileID: 1532100543}
+  - component: {fileID: 1532100542}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -391,55 +455,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!23 &1755359866
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1755359865}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 1
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &1755359867
+--- !u!65 &1532100542
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1755359865}
+  m_GameObject: {fileID: 1532100541}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -454,24 +476,66 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!33 &1755359868
+--- !u!23 &1532100543
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1532100541}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1532100544
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1755359865}
+  m_GameObject: {fileID: 1532100541}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &1755359869
+--- !u!4 &1532100545
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1755359865}
+  m_GameObject: {fileID: 1532100541}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.48, y: 0.3, z: -4.1958246}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -483,4 +547,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 343817366}
   - {fileID: 1138828413}
-  - {fileID: 1755359869}
+  - {fileID: 1532100545}
