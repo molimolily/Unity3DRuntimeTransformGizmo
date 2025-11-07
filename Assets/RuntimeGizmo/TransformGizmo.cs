@@ -249,6 +249,10 @@ namespace RuntimeGizmos
 
 		public bool manuallyHandleGizmo;
 
+		public bool drawOutline = true;
+
+		bool previousDrawOutline = true;
+
 		public LayerMask selectionMask = Physics.DefaultRaycastLayers;
 
 		public Action onCheckForSelectedAxis;
@@ -300,6 +304,9 @@ namespace RuntimeGizmos
 		{
 			myCamera = GetComponent<Camera>();
 			SetMaterial();
+
+			previousDrawOutline = drawOutline;
+			OnDrawOutlineChanged();
 		}
 
 		void RenderPipelineManager_endFrameRendering(ScriptableRenderContext context, Camera[] camera)
@@ -336,6 +343,12 @@ namespace RuntimeGizmos
 
 		void Update()
 		{
+			if(drawOutline != previousDrawOutline)
+			{
+				previousDrawOutline = drawOutline;
+				OnDrawOutlineChanged();
+			}
+
 			HandleUndoRedo();
 
 			SetSpaceAndType();
@@ -960,20 +973,11 @@ namespace RuntimeGizmos
 
 					if(!highlightedRenderers.Contains(render))
 					{
-						materialsBuffer.Clear();
-						materialsBuffer.AddRange(render.sharedMaterials);
-
-						if(!materialsBuffer.Contains(outlineMaterial))
-						{
-							materialsBuffer.Add(outlineMaterial);
-							render.materials = materialsBuffer.ToArray();
-						}
-
+						SetRendererOutline(render, drawOutline);
 						highlightedRenderers.Add(render);
 					}
 				}
 
-				materialsBuffer.Clear();
 			}
 		}
 
@@ -1008,25 +1012,87 @@ namespace RuntimeGizmos
 
 		void RemoveHighlightedRenderers(List<Renderer> renderers)
 		{
-			for(int i = 0; i < renderersBuffer.Count; i++)
+			for(int i = 0; i < renderers.Count; i++)
 			{
-				Renderer render = renderersBuffer[i];
+				Renderer render = renderers[i];
 				if(render != null)
 				{
-					materialsBuffer.Clear();
-					materialsBuffer.AddRange(render.sharedMaterials);
-
-					if(materialsBuffer.Contains(outlineMaterial))
-					{
-						materialsBuffer.Remove(outlineMaterial);
-						render.materials = materialsBuffer.ToArray();
-					}
+					SetRendererOutline(render, false);
 				}
 
 				highlightedRenderers.Remove(render);
 			}
 
+			renderers.Clear();
+		}
+
+		public bool DrawOutline
+		{
+			get {return drawOutline;}
+			set
+			{
+				if(drawOutline == value) return;
+
+				drawOutline = value;
+				previousDrawOutline = value;
+				OnDrawOutlineChanged();
+			}
+		}
+
+		void OnDrawOutlineChanged()
+		{
+			ApplyOutlineStateToHighlightedRenderers();
+		}
+
+		void ApplyOutlineStateToHighlightedRenderers()
+		{
+			if(highlightedRenderers.Count == 0) return;
+
 			renderersBuffer.Clear();
+			renderersBuffer.AddRange(highlightedRenderers);
+
+			for(int i = 0; i < renderersBuffer.Count; i++)
+			{
+				Renderer render = renderersBuffer[i];
+
+				if(render == null)
+				{
+					highlightedRenderers.Remove(render);
+					continue;
+				}
+
+				SetRendererOutline(render, drawOutline);
+			}
+
+			renderersBuffer.Clear();
+		}
+
+		void SetRendererOutline(Renderer render, bool shouldHaveOutline)
+		{
+			if(render == null) return;
+
+			SetMaterial();
+
+			materialsBuffer.Clear();
+			materialsBuffer.AddRange(render.sharedMaterials);
+
+			bool hasOutline = materialsBuffer.Contains(outlineMaterial);
+
+			if(shouldHaveOutline)
+			{
+				if(!hasOutline)
+				{
+					materialsBuffer.Add(outlineMaterial);
+					render.materials = materialsBuffer.ToArray();
+				}
+			}
+			else if(hasOutline)
+			{
+				materialsBuffer.Remove(outlineMaterial);
+				render.materials = materialsBuffer.ToArray();
+			}
+
+			materialsBuffer.Clear();
 		}
 
 		void AddTargetRoot(Transform targetRoot)
