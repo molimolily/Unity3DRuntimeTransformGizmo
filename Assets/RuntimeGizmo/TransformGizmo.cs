@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 using System.Collections.Generic;
 using System.Collections;
 using CommandUndoRedo;
@@ -24,10 +25,10 @@ namespace RuntimeGizmos
 		public CenterType centerType = CenterType.All;
 		public ScaleType scaleType = ScaleType.FromPoint;
 
-		[SerializeField]
-		bool useGizmo = true;
+                [SerializeField, FormerlySerializedAs("useGizmo")]
+                bool isInteractable = true;
 
-		bool previousUseGizmo = true;
+                bool previousIsInteractable = true;
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 		[Serializable]
@@ -265,8 +266,9 @@ namespace RuntimeGizmos
 		public Action<Transform> onTargetSelected;
 		public Action<Transform> onTargetDeselected;
 		public Action onSelectionCleared;
-		public Action<TransformType, Axis> onGizmoHover;
-		public Action onGizmoHoverExit;
+                public Action<TransformType, Axis> onGizmoHover;
+                public Action onGizmoHoverExit;
+                public Action<TransformType, Axis> onGizmoPointerProximity;
 		public Action<TransformType, Axis> onGizmoSelected;
 		public Action onGizmoDeselected;
 
@@ -314,20 +316,20 @@ namespace RuntimeGizmos
 		static Material lineMaterial;
 		static Material outlineMaterial;
 
-		void Awake()
-		{
-			myCamera = GetComponent<Camera>();
-			SetMaterial();
+                void Awake()
+                {
+                        myCamera = GetComponent<Camera>();
+                        SetMaterial();
 
-			previousDrawOutline = drawOutline;
-			OnDrawOutlineChanged();
+                        previousDrawOutline = drawOutline;
+                        OnDrawOutlineChanged();
 
-			previousUseGizmo = useGizmo;
-			if(!useGizmo)
-			{
-				CancelActiveTransformation();
-			}
-		}
+                        previousIsInteractable = isInteractable;
+                        if(!isInteractable)
+                        {
+                                CancelActiveTransformation();
+                        }
+                }
 
 		void RenderPipelineManager_endFrameRendering(ScriptableRenderContext context, Camera[] camera)
 		{
@@ -364,12 +366,16 @@ namespace RuntimeGizmos
 
 		void Update()
 		{
-			if(useGizmo != previousUseGizmo)
-			{
-				OnUseGizmoStateChanged();
-			}
+                        if(isInteractable != previousIsInteractable)
+                        {
+                                OnInteractableStateChanged();
+                        }
 
-			if(!useGizmo) return;
+                        if(!isInteractable)
+                        {
+                                SetNearAxis(false);
+                                return;
+                        }
 
 			if(drawOutline != previousDrawOutline)
 			{
@@ -381,12 +387,13 @@ namespace RuntimeGizmos
 
 			SetSpaceAndType();
 
-			if(manuallyHandleGizmo)
-			{
-				if(onCheckForSelectedAxis != null) onCheckForSelectedAxis();
-			}else{
-				SetNearAxis();
-			}
+                        if(manuallyHandleGizmo)
+                        {
+                                SetNearAxis(false);
+                                if(onCheckForSelectedAxis != null) onCheckForSelectedAxis();
+                        }else{
+                                SetNearAxis();
+                        }
 			
 			GetTarget();
 
@@ -397,7 +404,7 @@ namespace RuntimeGizmos
 
 		void LateUpdate()
 		{
-			if(!useGizmo) return;
+                        if(!isInteractable) return;
 
 			if(mainTargetRoot == null) return;
 
@@ -414,7 +421,7 @@ namespace RuntimeGizmos
 
 		void OnPostRender()
 		{
-			if(!useGizmo || mainTargetRoot == null || manuallyHandleGizmo) return;
+                        if(!isInteractable || mainTargetRoot == null || manuallyHandleGizmo) return;
 
 			lineMaterial.SetPass(0);
 
@@ -1114,25 +1121,39 @@ namespace RuntimeGizmos
 			}
 		}
 
-		public bool UseGizmo
-		{
-			get {return useGizmo;}
-			set {SetUseGizmo(value);}
-		}
-
-		public void SetUseGizmo(bool shouldUseGizmo)
-		{
-			if(useGizmo == shouldUseGizmo) return;
-
-			useGizmo = shouldUseGizmo;
-			OnUseGizmoStateChanged();
-		}
-
-                void OnUseGizmoStateChanged()
+                public bool IsInteractable
                 {
-                        previousUseGizmo = useGizmo;
+                        get {return isInteractable;}
+                        set {SetIsInteractable(value);}
+                }
 
-                        if(!useGizmo)
+#pragma warning disable 612, 618
+                [Obsolete("Use IsInteractable instead.")]
+                public bool UseGizmo
+                {
+                        get {return isInteractable;}
+                        set {SetIsInteractable(value);}
+                }
+#pragma warning restore 612, 618
+
+                public void SetUseGizmo(bool shouldUseGizmo)
+                {
+                        SetIsInteractable(shouldUseGizmo);
+                }
+
+                public void SetIsInteractable(bool shouldBeInteractable)
+                {
+                        if(isInteractable == shouldBeInteractable) return;
+
+                        isInteractable = shouldBeInteractable;
+                        OnInteractableStateChanged();
+                }
+
+                void OnInteractableStateChanged()
+                {
+                        previousIsInteractable = isInteractable;
+
+                        if(!isInteractable)
                         {
                                 CancelActiveTransformation();
                                 ApplyOutlineStateToHighlightedRenderers(false);
@@ -1366,12 +1387,17 @@ namespace RuntimeGizmos
 			return currentAxisInfo;
 		}
 
-                void SetNearAxis()
+                Axis pointerProximityAxis = Axis.None;
+                TransformType pointerProximityType = TransformType.Move;
+                bool hasPointerProximityState = false;
+
+                void SetNearAxis(bool allowStateChanges = true)
                 {
                         if(isTransforming) return;
 
                         Axis previousAxis = nearAxis;
                         TransformType previousType = translatingType;
+                        Axis previousPlaneAxis = planeAxis;
                         bool previousSuppressState = suppressHoverCallbacks;
                         suppressHoverCallbacks = true;
 
@@ -1422,9 +1448,19 @@ namespace RuntimeGizmos
 				}
 			}
 
-			suppressHoverCallbacks = previousSuppressState;
+                        TransformType evaluatedType = translatingType;
+                        Axis evaluatedAxis = nearAxis;
 
-                        if(!previousSuppressState && !isTransforming)
+                        if(!allowStateChanges)
+                        {
+                                SetTranslatingAxis(previousType, previousAxis, previousPlaneAxis);
+                        }
+
+                        suppressHoverCallbacks = previousSuppressState;
+
+                        UpdatePointerProximity(evaluatedType, evaluatedAxis);
+
+                        if(allowStateChanges && !previousSuppressState && !isTransforming)
                         {
                                 if(nearAxis != Axis.None)
                                 {
@@ -1438,6 +1474,17 @@ namespace RuntimeGizmos
                                         if(onGizmoHoverExit != null) onGizmoHoverExit();
                                 }
                         }
+                }
+
+                void UpdatePointerProximity(TransformType hoveredType, Axis hoveredAxis)
+                {
+                        if(hasPointerProximityState && pointerProximityAxis == hoveredAxis && pointerProximityType == hoveredType) return;
+
+                        pointerProximityAxis = hoveredAxis;
+                        pointerProximityType = hoveredType;
+                        hasPointerProximityState = true;
+
+                        if(onGizmoPointerProximity != null) onGizmoPointerProximity(hoveredType, hoveredAxis);
                 }
 
                 void ClearActiveAxis(bool preserveHoverState)
