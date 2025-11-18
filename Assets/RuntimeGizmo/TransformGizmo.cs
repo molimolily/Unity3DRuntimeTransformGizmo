@@ -286,10 +286,13 @@ namespace RuntimeGizmos
 		public Transform mainTargetRoot {get {return (targetRootsOrdered.Count > 0) ? (useFirstSelectedAsMain) ? targetRootsOrdered[0] : targetRootsOrdered[targetRootsOrdered.Count - 1] : null;}}
 
 		AxisInfo axisInfo;
-		Axis nearAxis = Axis.None;
-		bool suppressHoverCallbacks;
-		Axis planeAxis = Axis.None;
-		TransformType translatingType;
+                Axis nearAxis = Axis.None;
+                bool suppressHoverCallbacks;
+                bool hasPendingHoverStateOverride;
+                Axis pendingHoverPreviousAxis = Axis.None;
+                TransformType pendingHoverPreviousType;
+                Axis planeAxis = Axis.None;
+                TransformType translatingType;
 
 		AxisVectors handleLines = new AxisVectors();
 		AxisVectors handlePlanes = new AxisVectors();
@@ -852,7 +855,7 @@ namespace RuntimeGizmos
                         totalRotationAmount = Quaternion.identity;
                         totalScaleAmount = 0;
                         isTransforming = false;
-                        ClearActiveAxis(refreshHoverState: !manuallyHandleGizmo);
+                        ClearActiveAxis(preserveHoverState: !manuallyHandleGizmo);
 
 			if(onGizmoDeselected != null) onGizmoDeselected();
 			activeTransformCoroutine = null;
@@ -877,7 +880,7 @@ namespace RuntimeGizmos
                                 if(onGizmoDeselected != null) onGizmoDeselected();
                         }
 
-                        ClearActiveAxis(refreshHoverState: false);
+                        ClearActiveAxis(preserveHoverState: false);
 		}
 
 		float CalculateSnapAmount(float snapValue, float currentAmount, out float remainder)
@@ -1370,12 +1373,13 @@ namespace RuntimeGizmos
                 {
                         if(isTransforming) return;
 
-			Axis previousAxis = nearAxis;
-			TransformType previousType = translatingType;
-			bool previousSuppressState = suppressHoverCallbacks;
-			suppressHoverCallbacks = true;
+                        Axis previousAxis = hasPendingHoverStateOverride ? pendingHoverPreviousAxis : nearAxis;
+                        TransformType previousType = hasPendingHoverStateOverride ? pendingHoverPreviousType : translatingType;
+                        hasPendingHoverStateOverride = false;
+                        bool previousSuppressState = suppressHoverCallbacks;
+                        suppressHoverCallbacks = true;
 
-			SetTranslatingAxis(transformType, Axis.None);
+                        SetTranslatingAxis(transformType, Axis.None);
 
 			if(mainTargetRoot != null)
 			{
@@ -1440,18 +1444,27 @@ namespace RuntimeGizmos
                         }
                 }
 
-                void ClearActiveAxis(bool refreshHoverState)
+                void ClearActiveAxis(bool preserveHoverState)
                 {
-                        bool shouldRefreshHoverState = refreshHoverState && !manuallyHandleGizmo;
-                        bool previousSuppressState = suppressHoverCallbacks;
+                        Axis previousAxis = nearAxis;
+                        TransformType previousType = translatingType;
+                        bool shouldPreserve = preserveHoverState && !manuallyHandleGizmo && previousAxis != Axis.None;
 
-                        suppressHoverCallbacks = true;
-                        SetTranslatingAxis(transformType, Axis.None);
-                        suppressHoverCallbacks = previousSuppressState;
-
-                        if(shouldRefreshHoverState && !previousSuppressState && !isTransforming)
+                        if(shouldPreserve)
                         {
-                                SetNearAxis();
+                                bool previousSuppressState = suppressHoverCallbacks;
+                                suppressHoverCallbacks = true;
+                                SetTranslatingAxis(transformType, Axis.None);
+                                suppressHoverCallbacks = previousSuppressState;
+
+                                hasPendingHoverStateOverride = true;
+                                pendingHoverPreviousAxis = previousAxis;
+                                pendingHoverPreviousType = previousType;
+                        }
+                        else
+                        {
+                                hasPendingHoverStateOverride = false;
+                                SetTranslatingAxis(transformType, Axis.None);
                         }
                 }
 
