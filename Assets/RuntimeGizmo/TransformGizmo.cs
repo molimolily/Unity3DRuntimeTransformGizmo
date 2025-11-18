@@ -287,6 +287,7 @@ namespace RuntimeGizmos
 
 		AxisInfo axisInfo;
 		Axis nearAxis = Axis.None;
+		bool suppressHoverCallbacks;
 		Axis planeAxis = Axis.None;
 		TransformType translatingType;
 
@@ -1338,7 +1339,7 @@ namespace RuntimeGizmos
 			this.nearAxis = axis;
 			this.planeAxis = planeAxis;
 
-			if(hasChanged && !isTransforming)
+			if(hasChanged && !isTransforming && !suppressHoverCallbacks)
 			{
 				if(axis != Axis.None)
 				{
@@ -1369,50 +1370,73 @@ namespace RuntimeGizmos
 		{
 			if(isTransforming) return;
 
+			Axis previousAxis = nearAxis;
+			TransformType previousType = translatingType;
+			bool previousSuppressState = suppressHoverCallbacks;
+			suppressHoverCallbacks = true;
+
 			SetTranslatingAxis(transformType, Axis.None);
 
-			if(mainTargetRoot == null) return;
-
-			float distanceMultiplier = GetDistanceMultiplier();
-			float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
-
-			if(nearAxis == Axis.None && (TransformTypeContains(TransformType.Move) || TransformTypeContains(TransformType.Scale)))
+			if(mainTargetRoot != null)
 			{
-				//Important to check scale lines before move lines since in TransformType.All the move planes would block the scales center scale all gizmo.
-				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Scale))
+				float distanceMultiplier = GetDistanceMultiplier();
+				float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
+
+				if(nearAxis == Axis.None && (TransformTypeContains(TransformType.Move) || TransformTypeContains(TransformType.Scale)))
 				{
-					float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + boxSize) * distanceMultiplier;
-					HandleNearestPlanes(TransformType.Scale, handleSquares, tipMinSelectedDistanceCheck);
+					//Important to check scale lines before move lines since in TransformType.All the move planes would block the scales center scale all gizmo.
+					if(nearAxis == Axis.None && TransformTypeContains(TransformType.Scale))
+					{
+						float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + boxSize) * distanceMultiplier;
+						HandleNearestPlanes(TransformType.Scale, handleSquares, tipMinSelectedDistanceCheck);
+					}
+
+					if(nearAxis == Axis.None && TransformTypeContains(TransformType.Move))
+					{
+						//Important to check the planes first before the handle tip since it makes selecting the planes easier.
+						float planeMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + planeSize) * distanceMultiplier;
+						HandleNearestPlanes(TransformType.Move, handlePlanes, planeMinSelectedDistanceCheck);
+
+						if(nearAxis != Axis.None)
+						{
+							planeAxis = nearAxis;
+						}
+						else
+						{
+							float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + triangleSize) * distanceMultiplier;
+							HandleNearestLines(TransformType.Move, handleTriangles, tipMinSelectedDistanceCheck);
+						}
+					}
+
+					if(nearAxis == Axis.None)
+					{
+						//Since Move and Scale share the same handle line, we give Move the priority.
+						TransformType transType = transformType == TransformType.All ? TransformType.Move : transformType;
+						HandleNearestLines(transType, handleLines, handleMinSelectedDistanceCheck);
+					}
 				}
 
-				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Move))
+				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
 				{
-					//Important to check the planes first before the handle tip since it makes selecting the planes easier.
-					float planeMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + planeSize) * distanceMultiplier;
-					HandleNearestPlanes(TransformType.Move, handlePlanes, planeMinSelectedDistanceCheck);
-						
-					if(nearAxis != Axis.None)
-					{
-						planeAxis = nearAxis;
-					}
-					else
-					{
-						float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + triangleSize) * distanceMultiplier;
-						HandleNearestLines(TransformType.Move, handleTriangles, tipMinSelectedDistanceCheck);
-					}
-				}
-
-				if(nearAxis == Axis.None)
-				{
-					//Since Move and Scale share the same handle line, we give Move the priority.
-					TransformType transType = transformType == TransformType.All ? TransformType.Move : transformType;
-					HandleNearestLines(transType, handleLines, handleMinSelectedDistanceCheck);
+					HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
 				}
 			}
-			
-			if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
+
+			suppressHoverCallbacks = previousSuppressState;
+
+			if(!previousSuppressState && !isTransforming)
 			{
-				HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
+				if(nearAxis != Axis.None)
+				{
+					if(previousAxis != nearAxis || previousType != translatingType)
+					{
+						if(onGizmoHover != null) onGizmoHover(translatingType, nearAxis);
+					}
+				}
+				else if(previousAxis != Axis.None)
+				{
+					if(onGizmoHoverExit != null) onGizmoHoverExit();
+				}
 			}
 		}
 
