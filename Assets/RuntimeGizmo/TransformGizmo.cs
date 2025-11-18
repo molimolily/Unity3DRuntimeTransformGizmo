@@ -849,10 +849,10 @@ namespace RuntimeGizmos
 			commandGroup.Set(transformCommands);
 			UndoRedoManager.Insert(commandGroup);
 
-			totalRotationAmount = Quaternion.identity;
-			totalScaleAmount = 0;
-			isTransforming = false;
-			SetTranslatingAxis(transformType, Axis.None);
+                        totalRotationAmount = Quaternion.identity;
+                        totalScaleAmount = 0;
+                        isTransforming = false;
+                        ClearActiveAxis(refreshHoverState: !manuallyHandleGizmo);
 
 			if(onGizmoDeselected != null) onGizmoDeselected();
 			activeTransformCoroutine = null;
@@ -868,16 +868,16 @@ namespace RuntimeGizmos
 				activeTransformCoroutine = null;
 			}
 
-			if(isTransforming)
-			{
-				isTransforming = false;
-				totalRotationAmount = Quaternion.identity;
-				totalScaleAmount = 0f;
+                        if(isTransforming)
+                        {
+                                isTransforming = false;
+                                totalRotationAmount = Quaternion.identity;
+                                totalScaleAmount = 0f;
 
-				if(onGizmoDeselected != null) onGizmoDeselected();
-			}
+                                if(onGizmoDeselected != null) onGizmoDeselected();
+                        }
 
-			SetTranslatingAxis(transformType, Axis.None);
+                        ClearActiveAxis(refreshHoverState: false);
 		}
 
 		float CalculateSnapAmount(float snapValue, float currentAmount, out float remainder)
@@ -1331,11 +1331,11 @@ namespace RuntimeGizmos
 			}
 		}
 
-		public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
-		{
-			bool hasChanged = this.translatingType != type || this.nearAxis != axis;
+                public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
+                {
+                        bool hasChanged = this.translatingType != type || this.nearAxis != axis;
 
-			this.translatingType = type;
+                        this.translatingType = type;
 			this.nearAxis = axis;
 			this.planeAxis = planeAxis;
 
@@ -1366,9 +1366,9 @@ namespace RuntimeGizmos
 			return currentAxisInfo;
 		}
 
-		void SetNearAxis()
-		{
-			if(isTransforming) return;
+                void SetNearAxis()
+                {
+                        if(isTransforming) return;
 
 			Axis previousAxis = nearAxis;
 			TransformType previousType = translatingType;
@@ -1424,21 +1424,36 @@ namespace RuntimeGizmos
 
 			suppressHoverCallbacks = previousSuppressState;
 
-			if(!previousSuppressState && !isTransforming)
-			{
-				if(nearAxis != Axis.None)
-				{
-					if(previousAxis != nearAxis || previousType != translatingType)
-					{
-						if(onGizmoHover != null) onGizmoHover(translatingType, nearAxis);
-					}
-				}
-				else if(previousAxis != Axis.None)
-				{
-					if(onGizmoHoverExit != null) onGizmoHoverExit();
-				}
-			}
-		}
+                        if(!previousSuppressState && !isTransforming)
+                        {
+                                if(nearAxis != Axis.None)
+                                {
+                                        if(previousAxis != nearAxis || previousType != translatingType)
+                                        {
+                                                if(onGizmoHover != null) onGizmoHover(translatingType, nearAxis);
+                                        }
+                                }
+                                else if(previousAxis != Axis.None)
+                                {
+                                        if(onGizmoHoverExit != null) onGizmoHoverExit();
+                                }
+                        }
+                }
+
+                void ClearActiveAxis(bool refreshHoverState)
+                {
+                        bool shouldRefreshHoverState = refreshHoverState && !manuallyHandleGizmo;
+                        bool previousSuppressState = suppressHoverCallbacks;
+
+                        suppressHoverCallbacks = true;
+                        SetTranslatingAxis(transformType, Axis.None);
+                        suppressHoverCallbacks = previousSuppressState;
+
+                        if(shouldRefreshHoverState && !previousSuppressState && !isTransforming)
+                        {
+                                SetNearAxis();
+                        }
+                }
 
 		void HandleNearestLines(TransformType type, AxisVectors axisVectors, float minSelectedDistanceCheck)
 		{
