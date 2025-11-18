@@ -288,9 +288,6 @@ namespace RuntimeGizmos
 		AxisInfo axisInfo;
                 Axis nearAxis = Axis.None;
                 bool suppressHoverCallbacks;
-                bool hasPendingHoverStateOverride;
-                Axis pendingHoverPreviousAxis = Axis.None;
-                TransformType pendingHoverPreviousType;
                 Axis planeAxis = Axis.None;
                 TransformType translatingType;
 
@@ -1373,9 +1370,8 @@ namespace RuntimeGizmos
                 {
                         if(isTransforming) return;
 
-                        Axis previousAxis = hasPendingHoverStateOverride ? pendingHoverPreviousAxis : nearAxis;
-                        TransformType previousType = hasPendingHoverStateOverride ? pendingHoverPreviousType : translatingType;
-                        hasPendingHoverStateOverride = false;
+                        Axis previousAxis = nearAxis;
+                        TransformType previousType = translatingType;
                         bool previousSuppressState = suppressHoverCallbacks;
                         suppressHoverCallbacks = true;
 
@@ -1446,26 +1442,14 @@ namespace RuntimeGizmos
 
                 void ClearActiveAxis(bool preserveHoverState)
                 {
-                        Axis previousAxis = nearAxis;
-                        TransformType previousType = translatingType;
-                        bool shouldPreserve = preserveHoverState && !manuallyHandleGizmo && previousAxis != Axis.None;
+                        bool shouldPreserve = preserveHoverState && !manuallyHandleGizmo && nearAxis != Axis.None;
 
                         if(shouldPreserve)
                         {
-                                bool previousSuppressState = suppressHoverCallbacks;
-                                suppressHoverCallbacks = true;
-                                SetTranslatingAxis(transformType, Axis.None);
-                                suppressHoverCallbacks = previousSuppressState;
+                                return;
+                        }
 
-                                hasPendingHoverStateOverride = true;
-                                pendingHoverPreviousAxis = previousAxis;
-                                pendingHoverPreviousType = previousType;
-                        }
-                        else
-                        {
-                                hasPendingHoverStateOverride = false;
-                                SetTranslatingAxis(transformType, Axis.None);
-                        }
+                        SetTranslatingAxis(transformType, Axis.None);
                 }
 
 		void HandleNearestLines(TransformType type, AxisVectors axisVectors, float minSelectedDistanceCheck)
