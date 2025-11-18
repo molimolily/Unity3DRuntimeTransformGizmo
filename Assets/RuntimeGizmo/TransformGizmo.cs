@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 using System.Collections.Generic;
 using System.Collections;
 using CommandUndoRedo;
@@ -11,7 +12,7 @@ using UnityEngine.InputSystem;
 
 namespace RuntimeGizmos
 {
-        //To be safe, if you are changing any transforms hierarchy, such as parenting an object to something,
+	//To be safe, if you are changing any transforms hierarchy, such as parenting an object to something,
 	//you should call ClearTargets before doing so just to be sure nothing unexpected happens... as well as call UndoRedoManager.Clear()
 	//For example, if you select an object that has children, move the children elsewhere, deselect the original object, then try to add those old children to the selection, I think it wont work.
 
@@ -24,189 +25,194 @@ namespace RuntimeGizmos
 		public CenterType centerType = CenterType.All;
 		public ScaleType scaleType = ScaleType.FromPoint;
 
+                [SerializeField, FormerlySerializedAs("useGizmo")]
+                bool isInteractable = true;
+
+                bool previousIsInteractable = true;
+
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                [Serializable]
-                public class InputActionBindings
-                {
-                        public InputActionReference SetMoveType;
-                        public InputActionReference SetRotateType;
-                        public InputActionReference SetScaleType;
-                        //public InputActionReference SetRectToolType;
-                        public InputActionReference SetAllTransformType;
-                        public InputActionReference SetSpaceToggle;
-                        public InputActionReference SetPivotModeToggle;
-                        public InputActionReference SetCenterTypeToggle;
-                        public InputActionReference SetScaleTypeToggle;
-                        public InputActionReference PointerPosition;
-                        public InputActionReference PointerDelta;
-                        public InputActionReference PointerPress;
-                        public InputActionReference TranslationSnapping;
-                        public InputActionReference AddSelection;
-                        public InputActionReference RemoveSelection;
-                        public InputActionReference ActionKey;
-                        public InputActionReference UndoAction;
-                        public InputActionReference RedoAction;
+		[Serializable]
+		public class InputActionBindings
+		{
+			public InputActionReference SetMoveType;
+			public InputActionReference SetRotateType;
+			public InputActionReference SetScaleType;
+			//public InputActionReference SetRectToolType;
+			public InputActionReference SetAllTransformType;
+			public InputActionReference SetSpaceToggle;
+			public InputActionReference SetPivotModeToggle;
+			public InputActionReference SetCenterTypeToggle;
+			public InputActionReference SetScaleTypeToggle;
+			public InputActionReference PointerPosition;
+			public InputActionReference PointerDelta;
+			public InputActionReference PointerPress;
+			public InputActionReference TranslationSnapping;
+			public InputActionReference AddSelection;
+			public InputActionReference RemoveSelection;
+			public InputActionReference ActionKey;
+			public InputActionReference UndoAction;
+			public InputActionReference RedoAction;
 
-                        public IEnumerable<InputActionReference> GetAllBindings()
+			public IEnumerable<InputActionReference> GetAllBindings()
 			{
-                                yield return SetMoveType;
-                                yield return SetRotateType;
-                                yield return SetScaleType;
-                                //yield return SetRectToolType;
-                                yield return SetAllTransformType;
-                                yield return SetSpaceToggle;
-                                yield return SetPivotModeToggle;
-                                yield return SetCenterTypeToggle;
-                                yield return SetScaleTypeToggle;
-                                yield return PointerPosition;
-                                yield return PointerDelta;
-                                yield return PointerPress;
-                                yield return TranslationSnapping;
-                                yield return AddSelection;
-                                yield return RemoveSelection;
-                                yield return ActionKey;
-                                yield return UndoAction;
-                                yield return RedoAction;
-                        }
-                }
+				yield return SetMoveType;
+				yield return SetRotateType;
+				yield return SetScaleType;
+				//yield return SetRectToolType;
+				yield return SetAllTransformType;
+				yield return SetSpaceToggle;
+				yield return SetPivotModeToggle;
+				yield return SetCenterTypeToggle;
+				yield return SetScaleTypeToggle;
+				yield return PointerPosition;
+				yield return PointerDelta;
+				yield return PointerPress;
+				yield return TranslationSnapping;
+				yield return AddSelection;
+				yield return RemoveSelection;
+				yield return ActionKey;
+				yield return UndoAction;
+				yield return RedoAction;
+			}
+		}
 
-                [SerializeField]
-                InputActionBindings inputActions = new InputActionBindings();
+		[SerializeField]
+		InputActionBindings inputActions = new InputActionBindings();
 
-                HashSet<InputAction> enabledInputActions = new HashSet<InputAction>();
+		HashSet<InputAction> enabledInputActions = new HashSet<InputAction>();
 
-                void EnableAssignedInputActions()
-                {
-                        if(inputActions == null)
+		void EnableAssignedInputActions()
+		{
+			if(inputActions == null)
 			{
-                                enabledInputActions.Clear();
-                                return;
-                        }
+				enabledInputActions.Clear();
+				return;
+			}
 
-                        enabledInputActions.Clear();
+			enabledInputActions.Clear();
 
-                        foreach(InputActionReference reference in inputActions.GetAllBindings())
-                        {
-                                InputAction action = reference != null ? reference.action : null;
-                                if(action == null) continue;
+			foreach(InputActionReference reference in inputActions.GetAllBindings())
+			{
+				InputAction action = reference != null ? reference.action : null;
+				if(action == null) continue;
 
-                                if(!action.enabled)
-                                {
-                                        action.Enable();
-                                        enabledInputActions.Add(action);
-                                }
-                        }
-                }
+				if(!action.enabled)
+				{
+					action.Enable();
+					enabledInputActions.Add(action);
+				}
+			}
+		}
 
-                void DisableAssignedInputActions()
-                {
-                        foreach(InputAction action in enabledInputActions)
-                        {
-                                if(action != null && action.enabled)
-                                {
-                                        action.Disable();
-                                }
-                        }
+		void DisableAssignedInputActions()
+		{
+			foreach(InputAction action in enabledInputActions)
+			{
+				if(action != null && action.enabled)
+				{
+					action.Disable();
+				}
+			}
 
-                        enabledInputActions.Clear();
-                }
+			enabledInputActions.Clear();
+		}
 
-                static bool WasActionPressedThisFrame(InputActionReference actionReference)
-                {
-                        InputAction action = actionReference != null ? actionReference.action : null;
-                        return action != null && action.triggered;
-                }
+		static bool WasActionPressedThisFrame(InputActionReference actionReference)
+		{
+			InputAction action = actionReference != null ? actionReference.action : null;
+			return action != null && action.triggered;
+		}
 
-                static bool IsActionPressed(InputActionReference actionReference)
-                {
-                        InputAction action = actionReference != null ? actionReference.action : null;
-                        return action != null && action.IsPressed();
-                }
+		static bool IsActionPressed(InputActionReference actionReference)
+		{
+			InputAction action = actionReference != null ? actionReference.action : null;
+			return action != null && action.IsPressed();
+		}
 #else
-                //These are the same as the unity editor hotkeys
-                public KeyCode SetMoveType = KeyCode.W;
-                public KeyCode SetRotateType = KeyCode.E;
-                public KeyCode SetScaleType = KeyCode.R;
-                //public KeyCode SetRectToolType = KeyCode.T;
-                public KeyCode SetAllTransformType = KeyCode.Y;
-                public KeyCode SetSpaceToggle = KeyCode.X;
-                public KeyCode SetPivotModeToggle = KeyCode.Z;
-                public KeyCode SetCenterTypeToggle = KeyCode.C;
-                public KeyCode SetScaleTypeToggle = KeyCode.S;
-                public KeyCode translationSnapping = KeyCode.LeftControl;
-                public KeyCode AddSelection = KeyCode.LeftShift;
-                public KeyCode RemoveSelection = KeyCode.LeftControl;
-                public KeyCode ActionKey = KeyCode.LeftShift; //Its set to shift instead of control so that while in the editor we dont accidentally undo editor changes =/
-                public KeyCode UndoAction = KeyCode.Z;
-                public KeyCode RedoAction = KeyCode.Y;
+		//These are the same as the unity editor hotkeys
+		public KeyCode SetMoveType = KeyCode.W;
+		public KeyCode SetRotateType = KeyCode.E;
+		public KeyCode SetScaleType = KeyCode.R;
+		//public KeyCode SetRectToolType = KeyCode.T;
+		public KeyCode SetAllTransformType = KeyCode.Y;
+		public KeyCode SetSpaceToggle = KeyCode.X;
+		public KeyCode SetPivotModeToggle = KeyCode.Z;
+		public KeyCode SetCenterTypeToggle = KeyCode.C;
+		public KeyCode SetScaleTypeToggle = KeyCode.S;
+		public KeyCode translationSnapping = KeyCode.LeftControl;
+		public KeyCode AddSelection = KeyCode.LeftShift;
+		public KeyCode RemoveSelection = KeyCode.LeftControl;
+		public KeyCode ActionKey = KeyCode.LeftShift; //Its set to shift instead of control so that while in the editor we dont accidentally undo editor changes =/
+		public KeyCode UndoAction = KeyCode.Z;
+		public KeyCode RedoAction = KeyCode.Y;
 #endif
 
-                Vector3 GetPointerPosition()
-                {
+		Vector3 GetPointerPosition()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(inputActions != null)
-                        {
-                                InputAction action = inputActions.PointerPosition != null ? inputActions.PointerPosition.action : null;
-                                if(action != null)
-                                {
-                                        Vector2 position = action.ReadValue<Vector2>();
-                                        return new Vector3(position.x, position.y, 0f);
-                                }
-                        }
+			if(inputActions != null)
+			{
+				InputAction action = inputActions.PointerPosition != null ? inputActions.PointerPosition.action : null;
+				if(action != null)
+				{
+					Vector2 position = action.ReadValue<Vector2>();
+					return new Vector3(position.x, position.y, 0f);
+				}
+			}
 #endif
-                        return GizmoInput.MousePosition;
-                }
+			return GizmoInput.MousePosition;
+		}
 
-                Vector2 GetPointerDelta()
-                {
+		Vector2 GetPointerDelta()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(inputActions != null)
-                        {
-                                InputAction action = inputActions.PointerDelta != null ? inputActions.PointerDelta.action : null;
-                                if(action != null)
-                                {
-                                        return action.ReadValue<Vector2>();
-                                }
-                        }
+			if(inputActions != null)
+			{
+				InputAction action = inputActions.PointerDelta != null ? inputActions.PointerDelta.action : null;
+				if(action != null)
+				{
+					return action.ReadValue<Vector2>();
+				}
+			}
 #endif
-                        return new Vector2(GizmoInput.GetMouseAxis("Mouse X"), GizmoInput.GetMouseAxis("Mouse Y"));
-                }
+			return new Vector2(GizmoInput.GetMouseAxis("Mouse X"), GizmoInput.GetMouseAxis("Mouse Y"));
+		}
 
-                bool IsPointerPressed()
-                {
+		bool IsPointerPressed()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(inputActions != null)
-                        {
-                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
-                                if(action != null) return action.IsPressed();
-                        }
+			if(inputActions != null)
+			{
+				InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+				if(action != null) return action.IsPressed();
+			}
 #endif
-                        return GizmoInput.GetMouseButton(0);
-                }
+			return GizmoInput.GetMouseButton(0);
+		}
 
-                bool WasPointerPressedThisFrame()
-                {
+		bool WasPointerPressedThisFrame()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(inputActions != null)
-                        {
-                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
-                                if(action != null) return action.WasPressedThisFrame();
-                        }
+			if(inputActions != null)
+			{
+				InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+				if(action != null) return action.WasPressedThisFrame();
+			}
 #endif
-                        return GizmoInput.GetMouseButtonDown(0);
-                }
+			return GizmoInput.GetMouseButtonDown(0);
+		}
 
-                bool WasPointerReleasedThisFrame()
-                {
+		bool WasPointerReleasedThisFrame()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(inputActions != null)
-                        {
-                                InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
-                                if(action != null) return action.WasReleasedThisFrame();
-                        }
+			if(inputActions != null)
+			{
+				InputAction action = inputActions.PointerPress != null ? inputActions.PointerPress.action : null;
+				if(action != null) return action.WasReleasedThisFrame();
+			}
 #endif
-                        return GizmoInput.GetMouseButtonUp(0);
-                }
+			return GizmoInput.GetMouseButtonUp(0);
+		}
 
 		public Color xColor = new Color(1, 0, 0, 0.8f);
 		public Color yColor = new Color(0, 1, 0, 0.8f);
@@ -257,6 +263,14 @@ namespace RuntimeGizmos
 
 		public Action onCheckForSelectedAxis;
 		public Action onDrawCustomGizmo;
+		public Action<Transform> onTargetSelected;
+		public Action<Transform> onTargetDeselected;
+		public Action onSelectionCleared;
+                public Action<TransformType, Axis> onGizmoHover;
+                public Action onGizmoHoverExit;
+                public Action<TransformType, Axis> onGizmoPointerProximity;
+		public Action<TransformType, Axis> onGizmoSelected;
+		public Action onGizmoDeselected;
 
 		public Camera myCamera {get; private set;}
 
@@ -274,9 +288,10 @@ namespace RuntimeGizmos
 		public Transform mainTargetRoot {get {return (targetRootsOrdered.Count > 0) ? (useFirstSelectedAsMain) ? targetRootsOrdered[0] : targetRootsOrdered[targetRootsOrdered.Count - 1] : null;}}
 
 		AxisInfo axisInfo;
-		Axis nearAxis = Axis.None;
-		Axis planeAxis = Axis.None;
-		TransformType translatingType;
+                Axis nearAxis = Axis.None;
+                bool suppressHoverCallbacks;
+                Axis planeAxis = Axis.None;
+                TransformType translatingType;
 
 		AxisVectors handleLines = new AxisVectors();
 		AxisVectors handlePlanes = new AxisVectors();
@@ -296,45 +311,53 @@ namespace RuntimeGizmos
 
 		WaitForEndOfFrame waitForEndOFFrame = new WaitForEndOfFrame();
 		Coroutine forceUpdatePivotCoroutine;
+		Coroutine activeTransformCoroutine;
 
 		static Material lineMaterial;
 		static Material outlineMaterial;
 
-		void Awake()
-		{
-			myCamera = GetComponent<Camera>();
-			SetMaterial();
+                void Awake()
+                {
+                        myCamera = GetComponent<Camera>();
+                        SetMaterial();
 
-			previousDrawOutline = drawOutline;
-			OnDrawOutlineChanged();
-		}
+                        previousDrawOutline = drawOutline;
+                        OnDrawOutlineChanged();
+
+                        previousIsInteractable = isInteractable;
+                        if(!isInteractable)
+                        {
+                                CancelActiveTransformation();
+                        }
+                }
 
 		void RenderPipelineManager_endFrameRendering(ScriptableRenderContext context, Camera[] camera)
 		{
 			OnPostRender();
 		}
 		
-                void OnEnable()
-                {
-                        RenderPipelineManager.endFrameRendering += RenderPipelineManager_endFrameRendering;
-                        forceUpdatePivotCoroutine = StartCoroutine(ForceUpdatePivotPointAtEndOfFrame());
+		void OnEnable()
+		{
+			RenderPipelineManager.endFrameRendering += RenderPipelineManager_endFrameRendering;
+			forceUpdatePivotCoroutine = StartCoroutine(ForceUpdatePivotPointAtEndOfFrame());
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        EnableAssignedInputActions();
+			EnableAssignedInputActions();
 #endif
-                }
+		}
 
-                void OnDisable()
-                {
-                        ClearTargets(); //Just so things gets cleaned up, such as removing any materials we placed on objects.
+		void OnDisable()
+		{
+			CancelActiveTransformation();
+			ClearTargets(); //Just so things gets cleaned up, such as removing any materials we placed on objects.
 
-                        RenderPipelineManager.endFrameRendering -= RenderPipelineManager_endFrameRendering;
-                        StopCoroutine(forceUpdatePivotCoroutine);
+			RenderPipelineManager.endFrameRendering -= RenderPipelineManager_endFrameRendering;
+			StopCoroutine(forceUpdatePivotCoroutine);
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        DisableAssignedInputActions();
+			DisableAssignedInputActions();
 #endif
-                }
+		}
 
 		void OnDestroy()
 		{
@@ -343,6 +366,17 @@ namespace RuntimeGizmos
 
 		void Update()
 		{
+                        if(isInteractable != previousIsInteractable)
+                        {
+                                OnInteractableStateChanged();
+                        }
+
+                        if(!isInteractable)
+                        {
+                                SetNearAxis(false);
+                                return;
+                        }
+
 			if(drawOutline != previousDrawOutline)
 			{
 				previousDrawOutline = drawOutline;
@@ -353,12 +387,13 @@ namespace RuntimeGizmos
 
 			SetSpaceAndType();
 
-			if(manuallyHandleGizmo)
-			{
-				if(onCheckForSelectedAxis != null) onCheckForSelectedAxis();
-			}else{
-				SetNearAxis();
-			}
+                        if(manuallyHandleGizmo)
+                        {
+                                SetNearAxis(false);
+                                if(onCheckForSelectedAxis != null) onCheckForSelectedAxis();
+                        }else{
+                                SetNearAxis();
+                        }
 			
 			GetTarget();
 
@@ -369,6 +404,8 @@ namespace RuntimeGizmos
 
 		void LateUpdate()
 		{
+                        if(!isInteractable) return;
+
 			if(mainTargetRoot == null) return;
 
 			//We run this in lateupdate since coroutines run after update and we want our gizmos to have the updated target transform position after TransformSelected()
@@ -384,7 +421,7 @@ namespace RuntimeGizmos
 
 		void OnPostRender()
 		{
-			if(mainTargetRoot == null || manuallyHandleGizmo) return;
+                        if(!isInteractable || mainTargetRoot == null || manuallyHandleGizmo) return;
 
 			lineMaterial.SetPass(0);
 
@@ -445,36 +482,36 @@ namespace RuntimeGizmos
 			return color;
 		}
 
-                void HandleUndoRedo()
-                {
-                        if(maxUndoStored != UndoRedoManager.maxUndoStored) { UndoRedoManager.maxUndoStored = maxUndoStored; }
+		void HandleUndoRedo()
+		{
+			if(maxUndoStored != UndoRedoManager.maxUndoStored) { UndoRedoManager.maxUndoStored = maxUndoStored; }
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(IsActionPressed(inputActions.ActionKey))
-                        {
-                                if(WasActionPressedThisFrame(inputActions.UndoAction))
-                                {
-                                        UndoRedoManager.Undo();
-                                }
-                                else if(WasActionPressedThisFrame(inputActions.RedoAction))
-                                {
-                                        UndoRedoManager.Redo();
-                                }
-                        }
+			if(IsActionPressed(inputActions.ActionKey))
+			{
+				if(WasActionPressedThisFrame(inputActions.UndoAction))
+				{
+					UndoRedoManager.Undo();
+				}
+				else if(WasActionPressedThisFrame(inputActions.RedoAction))
+				{
+					UndoRedoManager.Redo();
+				}
+			}
 #else
-                        if(GizmoInput.GetKey(ActionKey))
-                        {
-                                if(GizmoInput.GetKeyDown(UndoAction))
-                                {
-                                        UndoRedoManager.Undo();
-                                }
-                                else if(GizmoInput.GetKeyDown(RedoAction))
-                                {
-                                        UndoRedoManager.Redo();
-                                }
-                        }
+			if(GizmoInput.GetKey(ActionKey))
+			{
+				if(GizmoInput.GetKeyDown(UndoAction))
+				{
+					UndoRedoManager.Undo();
+				}
+				else if(GizmoInput.GetKeyDown(RedoAction))
+				{
+					UndoRedoManager.Redo();
+				}
+			}
 #endif
-                }
+		}
 
 		//We only support scaling in local space.
 		public TransformSpace GetProperTransformSpace()
@@ -513,89 +550,90 @@ namespace RuntimeGizmos
 			return length;
 		}
 
-                void SetSpaceAndType()
-                {
+		void SetSpaceAndType()
+		{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(IsActionPressed(inputActions.ActionKey)) return;
+			if(IsActionPressed(inputActions.ActionKey)) return;
 #else
-                        if(GizmoInput.GetKey(ActionKey)) return;
+			if(GizmoInput.GetKey(ActionKey)) return;
 #endif
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(WasActionPressedThisFrame(inputActions.SetMoveType)) transformType = TransformType.Move;
-                        else if(WasActionPressedThisFrame(inputActions.SetRotateType)) transformType = TransformType.Rotate;
-                        else if(WasActionPressedThisFrame(inputActions.SetScaleType)) transformType = TransformType.Scale;
-                        //else if(WasActionPressedThisFrame(inputActions.SetRectToolType)) type = TransformType.RectTool;
-                        else if(WasActionPressedThisFrame(inputActions.SetAllTransformType)) transformType = TransformType.All;
+			if(WasActionPressedThisFrame(inputActions.SetMoveType)) transformType = TransformType.Move;
+			else if(WasActionPressedThisFrame(inputActions.SetRotateType)) transformType = TransformType.Rotate;
+			else if(WasActionPressedThisFrame(inputActions.SetScaleType)) transformType = TransformType.Scale;
+			//else if(WasActionPressedThisFrame(inputActions.SetRectToolType)) type = TransformType.RectTool;
+			else if(WasActionPressedThisFrame(inputActions.SetAllTransformType)) transformType = TransformType.All;
 #else
-                        if(GizmoInput.GetKeyDown(SetMoveType)) transformType = TransformType.Move;
-                        else if(GizmoInput.GetKeyDown(SetRotateType)) transformType = TransformType.Rotate;
-                        else if(GizmoInput.GetKeyDown(SetScaleType)) transformType = TransformType.Scale;
-                        //else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
-                        else if(GizmoInput.GetKeyDown(SetAllTransformType)) transformType = TransformType.All;
+			if(GizmoInput.GetKeyDown(SetMoveType)) transformType = TransformType.Move;
+			else if(GizmoInput.GetKeyDown(SetRotateType)) transformType = TransformType.Rotate;
+			else if(GizmoInput.GetKeyDown(SetScaleType)) transformType = TransformType.Scale;
+			//else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
+			else if(GizmoInput.GetKeyDown(SetAllTransformType)) transformType = TransformType.All;
 #endif
 
-                        if(!isTransforming) translatingType = transformType;
+			if(!isTransforming) translatingType = transformType;
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(WasActionPressedThisFrame(inputActions.SetPivotModeToggle))
+			if(WasActionPressedThisFrame(inputActions.SetPivotModeToggle))
 #else
-                        if(GizmoInput.GetKeyDown(SetPivotModeToggle))
+			if(GizmoInput.GetKeyDown(SetPivotModeToggle))
 #endif
-                        {
-                                if(pivot == TransformPivot.Pivot) pivot = TransformPivot.Center;
-                                else if(pivot == TransformPivot.Center) pivot = TransformPivot.Pivot;
+			{
+				if(pivot == TransformPivot.Pivot) pivot = TransformPivot.Center;
+				else if(pivot == TransformPivot.Center) pivot = TransformPivot.Pivot;
 
-                                SetPivotPoint();
-                        }
+				SetPivotPoint();
+			}
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(WasActionPressedThisFrame(inputActions.SetCenterTypeToggle))
+			if(WasActionPressedThisFrame(inputActions.SetCenterTypeToggle))
 #else
-                        if(GizmoInput.GetKeyDown(SetCenterTypeToggle))
+			if(GizmoInput.GetKeyDown(SetCenterTypeToggle))
 #endif
-                        {
-                                if(centerType == CenterType.All) centerType = CenterType.Solo;
-                                else if(centerType == CenterType.Solo) centerType = CenterType.All;
+			{
+				if(centerType == CenterType.All) centerType = CenterType.Solo;
+				else if(centerType == CenterType.Solo) centerType = CenterType.All;
 
-                                SetPivotPoint();
-                        }
+				SetPivotPoint();
+			}
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(WasActionPressedThisFrame(inputActions.SetSpaceToggle))
+			if(WasActionPressedThisFrame(inputActions.SetSpaceToggle))
 #else
-                        if(GizmoInput.GetKeyDown(SetSpaceToggle))
+			if(GizmoInput.GetKeyDown(SetSpaceToggle))
 #endif
-                        {
-                                if(space == TransformSpace.Global) space = TransformSpace.Local;
-                                else if(space == TransformSpace.Local) space = TransformSpace.Global;
-                        }
+			{
+				if(space == TransformSpace.Global) space = TransformSpace.Local;
+				else if(space == TransformSpace.Local) space = TransformSpace.Global;
+			}
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                        if(WasActionPressedThisFrame(inputActions.SetScaleTypeToggle))
+			if(WasActionPressedThisFrame(inputActions.SetScaleTypeToggle))
 #else
-                        if(GizmoInput.GetKeyDown(SetScaleTypeToggle))
+			if(GizmoInput.GetKeyDown(SetScaleTypeToggle))
 #endif
-                        {
-                                if(scaleType == ScaleType.FromPoint) scaleType = ScaleType.FromPointOffset;
-                                else if(scaleType == ScaleType.FromPointOffset) scaleType = ScaleType.FromPoint;
-                        }
+			{
+				if(scaleType == ScaleType.FromPoint) scaleType = ScaleType.FromPointOffset;
+				else if(scaleType == ScaleType.FromPointOffset) scaleType = ScaleType.FromPoint;
+			}
 
-                        if(transformType == TransformType.Scale)
-                        {
-                                if(pivot == TransformPivot.Pivot) scaleType = ScaleType.FromPoint; //FromPointOffset can be inaccurate and should only really be used in Center mode if desired.
-                        }
-                }
+			if(transformType == TransformType.Scale)
+			{
+				if(pivot == TransformPivot.Pivot) scaleType = ScaleType.FromPoint; //FromPointOffset can be inaccurate and should only really be used in Center mode if desired.
+			}
+		}
 
 		void TransformSelected()
 		{
-                        if(mainTargetRoot != null)
-                        {
-                                if(nearAxis != Axis.None && WasPointerPressedThisFrame())
-                                {
-                                        StartCoroutine(TransformSelected(translatingType));
-                                }
-                        }
+			if(mainTargetRoot != null)
+			{
+				if(nearAxis != Axis.None && WasPointerPressedThisFrame())
+				{
+					if(onGizmoSelected != null) onGizmoSelected(translatingType, nearAxis);
+					activeTransformCoroutine = StartCoroutine(TransformSelected(translatingType));
+				}
+			}
 		}
 		
 		IEnumerator TransformSelected(TransformType transType)
@@ -622,16 +660,16 @@ namespace RuntimeGizmos
 				transformCommands.Add(new TransformCommand(this, targetRootsOrdered[i]));
 			}
 
-                        while(true)
-                        {
-                                if(WasPointerReleasedThisFrame()) break;
+			while(true)
+			{
+				if(WasPointerReleasedThisFrame()) break;
 
-                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
-                                Vector3 mousePosition = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, originalPivot, planeNormal);
+				Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+				Vector3 mousePosition = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, originalPivot, planeNormal);
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                                bool isSnapping = IsActionPressed(inputActions.TranslationSnapping);
+				bool isSnapping = IsActionPressed(inputActions.TranslationSnapping);
 #else
-                                bool isSnapping = GizmoInput.GetKey(translationSnapping);
+				bool isSnapping = GizmoInput.GetKey(translationSnapping);
 #endif
 
 				if(previousMousePosition != Vector3.zero && mousePosition != Vector3.zero)
@@ -755,13 +793,13 @@ namespace RuntimeGizmos
 						float rotateAmount = 0;
 						Vector3 rotationAxis = axis;
 
-                                                if(nearAxis == Axis.Any)
-                                                {
-                                                        Vector2 pointerDelta = GetPointerDelta();
-                                                        Vector3 rotation = transform.TransformDirection(new Vector3(pointerDelta.y, -pointerDelta.x, 0));
-                                                        Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
-                                                        rotateAmount *= allRotateSpeedMultiplier;
-                                                }else{
+						if(nearAxis == Axis.Any)
+						{
+							Vector2 pointerDelta = GetPointerDelta();
+							Vector3 rotation = transform.TransformDirection(new Vector3(pointerDelta.y, -pointerDelta.x, 0));
+							Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
+							rotateAmount *= allRotateSpeedMultiplier;
+						}else{
 							if(circularRotationMethod)
 							{
 								float angle = Vector3.SignedAngle(previousMousePosition - originalPivot, mousePosition - originalPivot, axis);
@@ -818,12 +856,35 @@ namespace RuntimeGizmos
 			commandGroup.Set(transformCommands);
 			UndoRedoManager.Insert(commandGroup);
 
-			totalRotationAmount = Quaternion.identity;
-			totalScaleAmount = 0;
-			isTransforming = false;
-			SetTranslatingAxis(transformType, Axis.None);
+                        totalRotationAmount = Quaternion.identity;
+                        totalScaleAmount = 0;
+                        isTransforming = false;
+                        ClearActiveAxis(preserveHoverState: !manuallyHandleGizmo);
+
+			if(onGizmoDeselected != null) onGizmoDeselected();
+			activeTransformCoroutine = null;
 
 			SetPivotPoint();
+		}
+
+		void CancelActiveTransformation()
+		{
+			if(activeTransformCoroutine != null)
+			{
+				StopCoroutine(activeTransformCoroutine);
+				activeTransformCoroutine = null;
+			}
+
+                        if(isTransforming)
+                        {
+                                isTransforming = false;
+                                totalRotationAmount = Quaternion.identity;
+                                totalScaleAmount = 0f;
+
+                                if(onGizmoDeselected != null) onGizmoDeselected();
+                        }
+
+                        ClearActiveAxis(preserveHoverState: false);
 		}
 
 		float CalculateSnapAmount(float snapValue, float currentAmount, out float remainder)
@@ -876,23 +937,23 @@ namespace RuntimeGizmos
 	
 		void GetTarget()
 		{
-                        if(nearAxis == Axis.None && WasPointerPressedThisFrame())
-                        {
+			if(nearAxis == Axis.None && WasPointerPressedThisFrame())
+			{
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-                                bool isAdding = IsActionPressed(inputActions.AddSelection);
-                                bool isRemoving = IsActionPressed(inputActions.RemoveSelection);
+				bool isAdding = IsActionPressed(inputActions.AddSelection);
+				bool isRemoving = IsActionPressed(inputActions.RemoveSelection);
 #else
 				bool isAdding = GizmoInput.GetKey(AddSelection);
 				bool isRemoving = GizmoInput.GetKey(RemoveSelection);
 #endif
 
 				RaycastHit hitInfo; 
-                                if(Physics.Raycast(myCamera.ScreenPointToRay(GetPointerPosition()), out hitInfo, Mathf.Infinity, selectionMask))
-                                {
-                                        Transform target = hitInfo.transform;
+				if(Physics.Raycast(myCamera.ScreenPointToRay(GetPointerPosition()), out hitInfo, Mathf.Infinity, selectionMask))
+				{
+					Transform target = hitInfo.transform;
 
-                                        if(isAdding)
-                                        {
+					if(isAdding)
+					{
 						AddTarget(target);
 					}
 					else if(isRemoving)
@@ -925,6 +986,8 @@ namespace RuntimeGizmos
 				AddTargetHighlightedRenderers(target);
 
 				SetPivotPoint();
+
+				if(onTargetSelected != null) onTargetSelected(target);
 			}
 		}
 
@@ -940,17 +1003,36 @@ namespace RuntimeGizmos
 				RemoveTargetRoot(target);
 
 				SetPivotPoint();
+
+				if(onTargetDeselected != null) onTargetDeselected(target);
 			}
 		}
+
+		List<Transform> clearedTargetsBuffer = new List<Transform>();
 
 		public void ClearTargets(bool addCommand = true)
 		{
 			if(addCommand) UndoRedoManager.Insert(new ClearTargetsCommand(this, targetRootsOrdered));
 
+			clearedTargetsBuffer.Clear();
+			clearedTargetsBuffer.AddRange(targetRootsOrdered);
+
 			ClearAllHighlightedRenderers();
 			targetRoots.Clear();
 			targetRootsOrdered.Clear();
 			children.Clear();
+
+			if(clearedTargetsBuffer.Count > 0)
+			{
+				for(int i = 0; i < clearedTargetsBuffer.Count; i++)
+				{
+					if(onTargetDeselected != null) onTargetDeselected(clearedTargetsBuffer[i]);
+				}
+
+				if(onSelectionCleared != null) onSelectionCleared();
+			}
+
+			clearedTargetsBuffer.Clear();
 		}
 
 		void ClearAndAddTarget(Transform target)
@@ -1039,17 +1121,70 @@ namespace RuntimeGizmos
 			}
 		}
 
-		void OnDrawOutlineChanged()
-		{
-			ApplyOutlineStateToHighlightedRenderers();
-		}
+                public bool IsInteractable
+                {
+                        get {return isInteractable;}
+                        set {SetIsInteractable(value);}
+                }
 
-		void ApplyOutlineStateToHighlightedRenderers()
-		{
-			if(highlightedRenderers.Count == 0) return;
+#pragma warning disable 612, 618
+                [Obsolete("Use IsInteractable instead.")]
+                public bool UseGizmo
+                {
+                        get {return isInteractable;}
+                        set {SetIsInteractable(value);}
+                }
+#pragma warning restore 612, 618
 
-			renderersBuffer.Clear();
-			renderersBuffer.AddRange(highlightedRenderers);
+                public void SetUseGizmo(bool shouldUseGizmo)
+                {
+                        SetIsInteractable(shouldUseGizmo);
+                }
+
+                public void SetIsInteractable(bool shouldBeInteractable)
+                {
+                        if(isInteractable == shouldBeInteractable) return;
+
+                        isInteractable = shouldBeInteractable;
+                        OnInteractableStateChanged();
+                }
+
+                void OnInteractableStateChanged()
+                {
+                        previousIsInteractable = isInteractable;
+
+                        if(!isInteractable)
+                        {
+                                CancelActiveTransformation();
+                                ApplyOutlineStateToHighlightedRenderers(false);
+                        }
+                        else
+                        {
+                                if(mainTargetRoot != null)
+                                {
+                                        SetPivotPoint();
+                                }
+
+                                ApplyOutlineStateToHighlightedRenderers(drawOutline);
+                        }
+                }
+
+                void OnDrawOutlineChanged()
+                {
+                        ApplyOutlineStateToHighlightedRenderers();
+                }
+
+                void ApplyOutlineStateToHighlightedRenderers()
+                {
+                        ApplyOutlineStateToHighlightedRenderers(drawOutline);
+                }
+
+                void ApplyOutlineStateToHighlightedRenderers(bool shouldDrawOutline)
+                {
+                        if(highlightedRenderers.Count == 0) return;
+
+                        renderersBuffer.Clear();
+                        renderersBuffer.AddRange(highlightedRenderers);
 
 			for(int i = 0; i < renderersBuffer.Count; i++)
 			{
@@ -1061,11 +1196,11 @@ namespace RuntimeGizmos
 					continue;
 				}
 
-				SetRendererOutline(render, drawOutline);
-			}
+                                SetRendererOutline(render, shouldDrawOutline);
+                        }
 
-			renderersBuffer.Clear();
-		}
+                        renderersBuffer.Clear();
+                }
 
 		void SetRendererOutline(Renderer render, bool shouldHaveOutline)
 		{
@@ -1217,11 +1352,25 @@ namespace RuntimeGizmos
 			}
 		}
 
-		public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
-		{
-			this.translatingType = type;
+                public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
+                {
+                        bool hasChanged = this.translatingType != type || this.nearAxis != axis;
+
+                        this.translatingType = type;
 			this.nearAxis = axis;
 			this.planeAxis = planeAxis;
+
+			if(hasChanged && !isTransforming && !suppressHoverCallbacks)
+			{
+				if(axis != Axis.None)
+				{
+					if(onGizmoHover != null) onGizmoHover(type, axis);
+				}
+				else
+				{
+					if(onGizmoHoverExit != null) onGizmoHoverExit();
+				}
+			}
 		}
 
 		public AxisInfo GetAxisInfo()
@@ -1238,56 +1387,117 @@ namespace RuntimeGizmos
 			return currentAxisInfo;
 		}
 
-		void SetNearAxis()
-		{
-			if(isTransforming) return;
+                Axis pointerProximityAxis = Axis.None;
+                TransformType pointerProximityType = TransformType.Move;
+                bool hasPointerProximityState = false;
 
-			SetTranslatingAxis(transformType, Axis.None);
+                void SetNearAxis(bool allowStateChanges = true)
+                {
+                        if(isTransforming) return;
 
-			if(mainTargetRoot == null) return;
+                        Axis previousAxis = nearAxis;
+                        TransformType previousType = translatingType;
+                        Axis previousPlaneAxis = planeAxis;
+                        bool previousSuppressState = suppressHoverCallbacks;
+                        suppressHoverCallbacks = true;
 
-			float distanceMultiplier = GetDistanceMultiplier();
-			float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
+                        SetTranslatingAxis(transformType, Axis.None);
 
-			if(nearAxis == Axis.None && (TransformTypeContains(TransformType.Move) || TransformTypeContains(TransformType.Scale)))
+			if(mainTargetRoot != null)
 			{
-				//Important to check scale lines before move lines since in TransformType.All the move planes would block the scales center scale all gizmo.
-				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Scale))
+				float distanceMultiplier = GetDistanceMultiplier();
+				float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
+
+				if(nearAxis == Axis.None && (TransformTypeContains(TransformType.Move) || TransformTypeContains(TransformType.Scale)))
 				{
-					float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + boxSize) * distanceMultiplier;
-					HandleNearestPlanes(TransformType.Scale, handleSquares, tipMinSelectedDistanceCheck);
+					//Important to check scale lines before move lines since in TransformType.All the move planes would block the scales center scale all gizmo.
+					if(nearAxis == Axis.None && TransformTypeContains(TransformType.Scale))
+					{
+						float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + boxSize) * distanceMultiplier;
+						HandleNearestPlanes(TransformType.Scale, handleSquares, tipMinSelectedDistanceCheck);
+					}
+
+					if(nearAxis == Axis.None && TransformTypeContains(TransformType.Move))
+					{
+						//Important to check the planes first before the handle tip since it makes selecting the planes easier.
+						float planeMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + planeSize) * distanceMultiplier;
+						HandleNearestPlanes(TransformType.Move, handlePlanes, planeMinSelectedDistanceCheck);
+
+						if(nearAxis != Axis.None)
+						{
+							planeAxis = nearAxis;
+						}
+						else
+						{
+							float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + triangleSize) * distanceMultiplier;
+							HandleNearestLines(TransformType.Move, handleTriangles, tipMinSelectedDistanceCheck);
+						}
+					}
+
+					if(nearAxis == Axis.None)
+					{
+						//Since Move and Scale share the same handle line, we give Move the priority.
+						TransformType transType = transformType == TransformType.All ? TransformType.Move : transformType;
+						HandleNearestLines(transType, handleLines, handleMinSelectedDistanceCheck);
+					}
 				}
 
-				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Move))
+				if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
 				{
-					//Important to check the planes first before the handle tip since it makes selecting the planes easier.
-					float planeMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + planeSize) * distanceMultiplier;
-					HandleNearestPlanes(TransformType.Move, handlePlanes, planeMinSelectedDistanceCheck);
-						
-					if(nearAxis != Axis.None)
-					{
-						planeAxis = nearAxis;
-					}
-					else
-					{
-						float tipMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + triangleSize) * distanceMultiplier;
-						HandleNearestLines(TransformType.Move, handleTriangles, tipMinSelectedDistanceCheck);
-					}
-				}
-
-				if(nearAxis == Axis.None)
-				{
-					//Since Move and Scale share the same handle line, we give Move the priority.
-					TransformType transType = transformType == TransformType.All ? TransformType.Move : transformType;
-					HandleNearestLines(transType, handleLines, handleMinSelectedDistanceCheck);
+					HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
 				}
 			}
-			
-			if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
-			{
-				HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
-			}
-		}
+
+                        TransformType evaluatedType = translatingType;
+                        Axis evaluatedAxis = nearAxis;
+
+                        if(!allowStateChanges)
+                        {
+                                SetTranslatingAxis(previousType, previousAxis, previousPlaneAxis);
+                        }
+
+                        suppressHoverCallbacks = previousSuppressState;
+
+                        UpdatePointerProximity(evaluatedType, evaluatedAxis);
+
+                        if(allowStateChanges && !previousSuppressState && !isTransforming)
+                        {
+                                if(nearAxis != Axis.None)
+                                {
+                                        if(previousAxis != nearAxis || previousType != translatingType)
+                                        {
+                                                if(onGizmoHover != null) onGizmoHover(translatingType, nearAxis);
+                                        }
+                                }
+                                else if(previousAxis != Axis.None)
+                                {
+                                        if(onGizmoHoverExit != null) onGizmoHoverExit();
+                                }
+                        }
+                }
+
+                void UpdatePointerProximity(TransformType hoveredType, Axis hoveredAxis)
+                {
+                        if(hasPointerProximityState && pointerProximityAxis == hoveredAxis && pointerProximityType == hoveredType) return;
+
+                        pointerProximityAxis = hoveredAxis;
+                        pointerProximityType = hoveredType;
+                        hasPointerProximityState = true;
+
+                        if(onGizmoPointerProximity != null) onGizmoPointerProximity(hoveredType, hoveredAxis);
+                }
+
+                void ClearActiveAxis(bool preserveHoverState)
+                {
+                        bool shouldPreserve = preserveHoverState && !manuallyHandleGizmo && nearAxis != Axis.None;
+
+                        if(shouldPreserve)
+                        {
+                                return;
+                        }
+
+                        SetTranslatingAxis(transformType, Axis.None);
+                }
 
 		void HandleNearestLines(TransformType type, AxisVectors axisVectors, float minSelectedDistanceCheck)
 		{
@@ -1315,28 +1525,28 @@ namespace RuntimeGizmos
 			else if(xClosestDistance <= minSelectedDistanceCheck && xClosestDistance <= yClosestDistance && xClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.X);
 			else if(yClosestDistance <= minSelectedDistanceCheck && yClosestDistance <= xClosestDistance && yClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.Y);
 			else if(zClosestDistance <= minSelectedDistanceCheck && zClosestDistance <= xClosestDistance && zClosestDistance <= yClosestDistance) SetTranslatingAxis(type, Axis.Z);
-                        else if(type == TransformType.Rotate && mainTargetRoot != null)
-                        {
-                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
-                                Vector3 mousePlaneHit = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, pivotPoint, (transform.position - pivotPoint).normalized);
-                                if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetTranslatingAxis(type, Axis.Any);
-                        }
-                }
+			else if(type == TransformType.Rotate && mainTargetRoot != null)
+			{
+				Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+				Vector3 mousePlaneHit = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, pivotPoint, (transform.position - pivotPoint).normalized);
+				if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetTranslatingAxis(type, Axis.Any);
+			}
+		}
 
-                float ClosestDistanceFromMouseToLines(List<Vector3> lines)
-                {
-                        Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+		float ClosestDistanceFromMouseToLines(List<Vector3> lines)
+		{
+			Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
 
-                        float closestDistance = float.MaxValue;
+			float closestDistance = float.MaxValue;
 			for(int i = 0; i + 1 < lines.Count; i++)
 			{
 				IntersectPoints points = Geometry.ClosestPointsOnSegmentToLine(lines[i], lines[i + 1], mouseRay.origin, mouseRay.direction);
 				float distance = Vector3.Distance(points.first, points.second);
-                                if(distance < closestDistance)
-                                {
-                                        closestDistance = distance;
-                                }
-                        }
+				if(distance < closestDistance)
+				{
+					closestDistance = distance;
+				}
+			}
 			return closestDistance;
 		}
 
@@ -1344,13 +1554,13 @@ namespace RuntimeGizmos
 		{
 			float closestDistance = float.MaxValue;
 
-                        if(planePoints.Count >= 4)
-                        {
-                                Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
+			if(planePoints.Count >= 4)
+			{
+				Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
 
-                                for(int i = 0; i < planePoints.Count; i += 4)
-                                {
-                                        Plane plane = new Plane(planePoints[i], planePoints[i + 1], planePoints[i + 2]);
+				for(int i = 0; i < planePoints.Count; i += 4)
+				{
+					Plane plane = new Plane(planePoints[i], planePoints[i + 1], planePoints[i + 2]);
 
 					float distanceToPlane;
 					if(plane.Raycast(mouseRay, out distanceToPlane))
