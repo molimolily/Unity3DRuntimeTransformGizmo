@@ -255,8 +255,12 @@ namespace RuntimeGizmos
 
 		public LayerMask selectionMask = Physics.DefaultRaycastLayers;
 
-		public Action onCheckForSelectedAxis;
-		public Action onDrawCustomGizmo;
+                public Action onCheckForSelectedAxis;
+                public Action onDrawCustomGizmo;
+                public Action<Transform> onTargetAdded;
+                public Action<Transform> onTargetRemoved;
+                public Action onTargetsCleared;
+                public Action<TransformType, Axis, Axis> onTranslatingAxisChanged;
 
 		public Camera myCamera {get; private set;}
 
@@ -922,11 +926,16 @@ namespace RuntimeGizmos
 				if(addCommand) UndoRedoManager.Insert(new AddTargetCommand(this, target, targetRootsOrdered));
 
 				AddTargetRoot(target);
-				AddTargetHighlightedRenderers(target);
+                                AddTargetHighlightedRenderers(target);
 
-				SetPivotPoint();
-			}
-		}
+                                SetPivotPoint();
+
+                                if(onTargetAdded != null)
+                                {
+                                        onTargetAdded(target);
+                                }
+                        }
+                }
 
 		public void RemoveTarget(Transform target, bool addCommand = true)
 		{
@@ -936,22 +945,32 @@ namespace RuntimeGizmos
 
 				if(addCommand) UndoRedoManager.Insert(new RemoveTargetCommand(this, target));
 
-				RemoveTargetHighlightedRenderers(target);
-				RemoveTargetRoot(target);
+                                RemoveTargetHighlightedRenderers(target);
+                                RemoveTargetRoot(target);
 
-				SetPivotPoint();
-			}
-		}
+                                SetPivotPoint();
+
+                                if(onTargetRemoved != null)
+                                {
+                                        onTargetRemoved(target);
+                                }
+                        }
+                }
 
 		public void ClearTargets(bool addCommand = true)
 		{
 			if(addCommand) UndoRedoManager.Insert(new ClearTargetsCommand(this, targetRootsOrdered));
 
-			ClearAllHighlightedRenderers();
-			targetRoots.Clear();
-			targetRootsOrdered.Clear();
-			children.Clear();
-		}
+                        ClearAllHighlightedRenderers();
+                        targetRoots.Clear();
+                        targetRootsOrdered.Clear();
+                        children.Clear();
+
+                        if(onTargetsCleared != null)
+                        {
+                                onTargetsCleared();
+                        }
+                }
 
 		void ClearAndAddTarget(Transform target)
 		{
@@ -1217,12 +1236,19 @@ namespace RuntimeGizmos
 			}
 		}
 
-		public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
-		{
-			this.translatingType = type;
-			this.nearAxis = axis;
-			this.planeAxis = planeAxis;
-		}
+                public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
+                {
+                        bool hasChanged = this.translatingType != type || this.nearAxis != axis || this.planeAxis != planeAxis;
+
+                        this.translatingType = type;
+                        this.nearAxis = axis;
+                        this.planeAxis = planeAxis;
+
+                        if(hasChanged && onTranslatingAxisChanged != null)
+                        {
+                                onTranslatingAxisChanged(type, axis, planeAxis);
+                        }
+                }
 
 		public AxisInfo GetAxisInfo()
 		{
