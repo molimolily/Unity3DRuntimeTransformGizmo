@@ -1127,31 +1127,42 @@ namespace RuntimeGizmos
 			OnUseGizmoStateChanged();
 		}
 
-		void OnUseGizmoStateChanged()
-		{
-			previousUseGizmo = useGizmo;
+                void OnUseGizmoStateChanged()
+                {
+                        previousUseGizmo = useGizmo;
 
-			if(!useGizmo)
-			{
-				CancelActiveTransformation();
-			}
-			else if(mainTargetRoot != null)
-			{
-				SetPivotPoint();
-			}
-		}
+                        if(!useGizmo)
+                        {
+                                CancelActiveTransformation();
+                                ApplyOutlineStateToHighlightedRenderers(false);
+                        }
+                        else
+                        {
+                                if(mainTargetRoot != null)
+                                {
+                                        SetPivotPoint();
+                                }
 
-		void OnDrawOutlineChanged()
-		{
-			ApplyOutlineStateToHighlightedRenderers();
-		}
+                                ApplyOutlineStateToHighlightedRenderers(drawOutline);
+                        }
+                }
 
-		void ApplyOutlineStateToHighlightedRenderers()
-		{
-			if(highlightedRenderers.Count == 0) return;
+                void OnDrawOutlineChanged()
+                {
+                        ApplyOutlineStateToHighlightedRenderers();
+                }
 
-			renderersBuffer.Clear();
-			renderersBuffer.AddRange(highlightedRenderers);
+                void ApplyOutlineStateToHighlightedRenderers()
+                {
+                        ApplyOutlineStateToHighlightedRenderers(drawOutline);
+                }
+
+                void ApplyOutlineStateToHighlightedRenderers(bool shouldDrawOutline)
+                {
+                        if(highlightedRenderers.Count == 0) return;
+
+                        renderersBuffer.Clear();
+                        renderersBuffer.AddRange(highlightedRenderers);
 
 			for(int i = 0; i < renderersBuffer.Count; i++)
 			{
@@ -1163,11 +1174,11 @@ namespace RuntimeGizmos
 					continue;
 				}
 
-				SetRendererOutline(render, drawOutline);
-			}
+                                SetRendererOutline(render, shouldDrawOutline);
+                        }
 
-			renderersBuffer.Clear();
-		}
+                        renderersBuffer.Clear();
+                }
 
 		void SetRendererOutline(Renderer render, bool shouldHaveOutline)
 		{
