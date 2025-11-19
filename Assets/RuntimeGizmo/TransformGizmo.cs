@@ -278,9 +278,11 @@ namespace RuntimeGizmos
 		public Transform mainTargetRoot {get {return (targetRootsOrdered.Count > 0) ? (useFirstSelectedAsMain) ? targetRootsOrdered[0] : targetRootsOrdered[targetRootsOrdered.Count - 1] : null;}}
 
 		AxisInfo axisInfo;
-		Axis nearAxis = Axis.None;
-		Axis planeAxis = Axis.None;
-		TransformType translatingType;
+                Axis nearAxis = Axis.None;
+                Axis planeAxis = Axis.None;
+                TransformType translatingType;
+                bool suppressTranslatingAxisCallbacks;
+                bool pendingTranslatingAxisCallback;
 
 		AxisVectors handleLines = new AxisVectors();
 		AxisVectors handlePlanes = new AxisVectors();
@@ -602,13 +604,15 @@ namespace RuntimeGizmos
                         }
 		}
 		
-		IEnumerator TransformSelected(TransformType transType)
-		{
-			isTransforming = true;
-			totalScaleAmount = 0;
-			totalRotationAmount = Quaternion.identity;
+                IEnumerator TransformSelected(TransformType transType)
+                {
+                        isTransforming = true;
+                        totalScaleAmount = 0;
+                        totalRotationAmount = Quaternion.identity;
 
-			Vector3 originalPivot = pivotPoint;
+                        RaiseTranslatingAxisChanged();
+
+                        Vector3 originalPivot = pivotPoint;
 
 			Vector3 otherAxis1, otherAxis2;
 			Vector3 axis = GetNearAxisDirection(out otherAxis1, out otherAxis2);
@@ -1244,10 +1248,37 @@ namespace RuntimeGizmos
                         this.nearAxis = axis;
                         this.planeAxis = planeAxis;
 
-                        if(hasChanged && onTranslatingAxisChanged != null)
+                        if(!hasChanged)
                         {
-                                onTranslatingAxisChanged(type, axis, planeAxis);
+                                return;
                         }
+
+                        if(suppressTranslatingAxisCallbacks)
+                        {
+                                pendingTranslatingAxisCallback = true;
+                                return;
+                        }
+
+                        RaiseTranslatingAxisChanged();
+                }
+
+                void RaiseTranslatingAxisChanged()
+                {
+                        if(onTranslatingAxisChanged != null)
+                        {
+                                onTranslatingAxisChanged(translatingType, nearAxis, planeAxis);
+                        }
+                }
+
+                void FlushPendingTranslatingAxisChanged()
+                {
+                        if(!pendingTranslatingAxisCallback)
+                        {
+                                return;
+                        }
+
+                        pendingTranslatingAxisCallback = false;
+                        RaiseTranslatingAxisChanged();
                 }
 
 		public AxisInfo GetAxisInfo()
@@ -1264,16 +1295,27 @@ namespace RuntimeGizmos
 			return currentAxisInfo;
 		}
 
-		void SetNearAxis()
-		{
-			if(isTransforming) return;
+                void SetNearAxis()
+                {
+                        if(isTransforming) return;
 
-			SetTranslatingAxis(transformType, Axis.None);
+                        bool wasSuppressingCallbacks = suppressTranslatingAxisCallbacks;
+                        suppressTranslatingAxisCallbacks = true;
 
-			if(mainTargetRoot == null) return;
+                        SetTranslatingAxis(transformType, Axis.None);
 
-			float distanceMultiplier = GetDistanceMultiplier();
-			float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
+                        if(mainTargetRoot == null)
+                        {
+                                suppressTranslatingAxisCallbacks = wasSuppressingCallbacks;
+                                if(!suppressTranslatingAxisCallbacks)
+                                {
+                                        FlushPendingTranslatingAxisChanged();
+                                }
+                                return;
+                        }
+
+                        float distanceMultiplier = GetDistanceMultiplier();
+                        float handleMinSelectedDistanceCheck = (this.minSelectedDistanceCheck + handleWidth) * distanceMultiplier;
 
 			if(nearAxis == Axis.None && (TransformTypeContains(TransformType.Move) || TransformTypeContains(TransformType.Scale)))
 			{
@@ -1310,10 +1352,16 @@ namespace RuntimeGizmos
 			}
 			
 			if(nearAxis == Axis.None && TransformTypeContains(TransformType.Rotate))
-			{
-				HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
-			}
-		}
+                        {
+                                HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
+                        }
+
+                        suppressTranslatingAxisCallbacks = wasSuppressingCallbacks;
+                        if(!suppressTranslatingAxisCallbacks)
+                        {
+                                FlushPendingTranslatingAxisChanged();
+                        }
+                }
 
 		void HandleNearestLines(TransformType type, AxisVectors axisVectors, float minSelectedDistanceCheck)
 		{
