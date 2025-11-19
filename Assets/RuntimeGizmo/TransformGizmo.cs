@@ -260,6 +260,7 @@ namespace RuntimeGizmos
                 public Action<Transform> onTargetAdded;
                 public Action<Transform> onTargetRemoved;
                 public Action onTargetsCleared;
+                public Action<TransformType, Axis, Axis> onHoveringAxisChanged;
                 public Action<TransformType, Axis, Axis> onTranslatingAxisChanged;
 
 		public Camera myCamera {get; private set;}
@@ -281,8 +282,8 @@ namespace RuntimeGizmos
                 Axis nearAxis = Axis.None;
                 Axis planeAxis = Axis.None;
                 TransformType translatingType;
-                bool suppressTranslatingAxisCallbacks;
-                bool pendingTranslatingAxisCallback;
+                bool suppressHoveringAxisCallbacks;
+                bool pendingHoveringAxisCallback;
 
 		AxisVectors handleLines = new AxisVectors();
 		AxisVectors handlePlanes = new AxisVectors();
@@ -1242,6 +1243,16 @@ namespace RuntimeGizmos
 
                 public void SetTranslatingAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
                 {
+                        SetAxisState(type, axis, planeAxis, true);
+                }
+
+                void SetHoveringAxis(TransformType type, Axis axis, Axis planeAxis = Axis.None)
+                {
+                        SetAxisState(type, axis, planeAxis, false);
+                }
+
+                void SetAxisState(TransformType type, Axis axis, Axis planeAxis, bool isSelectionChange)
+                {
                         bool hasChanged = this.translatingType != type || this.nearAxis != axis || this.planeAxis != planeAxis;
 
                         this.translatingType = type;
@@ -1253,13 +1264,19 @@ namespace RuntimeGizmos
                                 return;
                         }
 
-                        if(suppressTranslatingAxisCallbacks)
+                        if(isSelectionChange)
                         {
-                                pendingTranslatingAxisCallback = true;
+                                RaiseTranslatingAxisChanged();
                                 return;
                         }
 
-                        RaiseTranslatingAxisChanged();
+                        if(suppressHoveringAxisCallbacks)
+                        {
+                                pendingHoveringAxisCallback = true;
+                                return;
+                        }
+
+                        RaiseHoveringAxisChanged();
                 }
 
                 void RaiseTranslatingAxisChanged()
@@ -1270,15 +1287,23 @@ namespace RuntimeGizmos
                         }
                 }
 
-                void FlushPendingTranslatingAxisChanged()
+                void RaiseHoveringAxisChanged()
                 {
-                        if(!pendingTranslatingAxisCallback)
+                        if(onHoveringAxisChanged != null)
+                        {
+                                onHoveringAxisChanged(translatingType, nearAxis, planeAxis);
+                        }
+                }
+
+                void FlushPendingHoveringAxisChanged()
+                {
+                        if(!pendingHoveringAxisCallback)
                         {
                                 return;
                         }
 
-                        pendingTranslatingAxisCallback = false;
-                        RaiseTranslatingAxisChanged();
+                        pendingHoveringAxisCallback = false;
+                        RaiseHoveringAxisChanged();
                 }
 
 		public AxisInfo GetAxisInfo()
@@ -1299,17 +1324,17 @@ namespace RuntimeGizmos
                 {
                         if(isTransforming) return;
 
-                        bool wasSuppressingCallbacks = suppressTranslatingAxisCallbacks;
-                        suppressTranslatingAxisCallbacks = true;
+                        bool wasSuppressingCallbacks = suppressHoveringAxisCallbacks;
+                        suppressHoveringAxisCallbacks = true;
 
-                        SetTranslatingAxis(transformType, Axis.None);
+                        SetHoveringAxis(transformType, Axis.None);
 
                         if(mainTargetRoot == null)
                         {
-                                suppressTranslatingAxisCallbacks = wasSuppressingCallbacks;
-                                if(!suppressTranslatingAxisCallbacks)
+                                suppressHoveringAxisCallbacks = wasSuppressingCallbacks;
+                                if(!suppressHoveringAxisCallbacks)
                                 {
-                                        FlushPendingTranslatingAxisChanged();
+                                        FlushPendingHoveringAxisChanged();
                                 }
                                 return;
                         }
@@ -1356,10 +1381,10 @@ namespace RuntimeGizmos
                                 HandleNearestLines(TransformType.Rotate, circlesLines, handleMinSelectedDistanceCheck);
                         }
 
-                        suppressTranslatingAxisCallbacks = wasSuppressingCallbacks;
-                        if(!suppressTranslatingAxisCallbacks)
+                        suppressHoveringAxisCallbacks = wasSuppressingCallbacks;
+                        if(!suppressHoveringAxisCallbacks)
                         {
-                                FlushPendingTranslatingAxisChanged();
+                                FlushPendingHoveringAxisChanged();
                         }
                 }
 
@@ -1385,15 +1410,15 @@ namespace RuntimeGizmos
 
 		void HandleNearest(TransformType type, float xClosestDistance, float yClosestDistance, float zClosestDistance, float allClosestDistance, float minSelectedDistanceCheck)
 		{
-			if(type == TransformType.Scale && allClosestDistance <= minSelectedDistanceCheck) SetTranslatingAxis(type, Axis.Any);
-			else if(xClosestDistance <= minSelectedDistanceCheck && xClosestDistance <= yClosestDistance && xClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.X);
-			else if(yClosestDistance <= minSelectedDistanceCheck && yClosestDistance <= xClosestDistance && yClosestDistance <= zClosestDistance) SetTranslatingAxis(type, Axis.Y);
-			else if(zClosestDistance <= minSelectedDistanceCheck && zClosestDistance <= xClosestDistance && zClosestDistance <= yClosestDistance) SetTranslatingAxis(type, Axis.Z);
+                        if(type == TransformType.Scale && allClosestDistance <= minSelectedDistanceCheck) SetHoveringAxis(type, Axis.Any);
+                        else if(xClosestDistance <= minSelectedDistanceCheck && xClosestDistance <= yClosestDistance && xClosestDistance <= zClosestDistance) SetHoveringAxis(type, Axis.X);
+                        else if(yClosestDistance <= minSelectedDistanceCheck && yClosestDistance <= xClosestDistance && yClosestDistance <= zClosestDistance) SetHoveringAxis(type, Axis.Y);
+                        else if(zClosestDistance <= minSelectedDistanceCheck && zClosestDistance <= xClosestDistance && zClosestDistance <= yClosestDistance) SetHoveringAxis(type, Axis.Z);
                         else if(type == TransformType.Rotate && mainTargetRoot != null)
                         {
                                 Ray mouseRay = myCamera.ScreenPointToRay(GetPointerPosition());
                                 Vector3 mousePlaneHit = Geometry.LinePlaneIntersect(mouseRay.origin, mouseRay.direction, pivotPoint, (transform.position - pivotPoint).normalized);
-                                if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetTranslatingAxis(type, Axis.Any);
+                                if((pivotPoint - mousePlaneHit).sqrMagnitude <= (GetHandleLength(TransformType.Rotate)).Squared()) SetHoveringAxis(type, Axis.Any);
                         }
                 }
 
