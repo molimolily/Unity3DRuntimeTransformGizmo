@@ -20,14 +20,18 @@ namespace RuntimeGizmos
 	{
 		public TransformSpace space = TransformSpace.Global;
 		public TransformType transformType = TransformType.Move;
-		public TransformPivot pivot = TransformPivot.Pivot;
-		public CenterType centerType = CenterType.All;
-		public ScaleType scaleType = ScaleType.FromPoint;
+                public TransformPivot pivot = TransformPivot.Pivot;
+                public CenterType centerType = CenterType.All;
+                public ScaleType scaleType = ScaleType.FromPoint;
 
-		[SerializeField]
-		bool useGizmo = true;
+                [SerializeField]
+                bool useGizmo = true;
 
-		bool previousUseGizmo = true;
+                [SerializeField]
+                bool allowTransform = true;
+
+                bool previousUseGizmo = true;
+                bool previousAllowTransform = true;
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 		[Serializable]
@@ -333,14 +337,15 @@ namespace RuntimeGizmos
 			myCamera = GetComponent<Camera>();
 			SetMaterial();
 
-			previousDrawOutline = drawOutline;
-			OnDrawOutlineChanged();
+                        previousDrawOutline = drawOutline;
+                        OnDrawOutlineChanged();
 
-			previousUseGizmo = useGizmo;
-			if(!useGizmo)
-			{
-				CancelActiveTransformation();
-			}
+                        previousUseGizmo = useGizmo;
+                        previousAllowTransform = allowTransform;
+                        if(!useGizmo)
+                        {
+                                CancelActiveTransformation();
+                        }
 		}
 
 		void RenderPipelineManager_endFrameRendering(ScriptableRenderContext context, Camera[] camera)
@@ -378,12 +383,17 @@ namespace RuntimeGizmos
 
 		void Update()
 		{
-			if(useGizmo != previousUseGizmo)
-			{
-				OnUseGizmoStateChanged();
-			}
+                        if(useGizmo != previousUseGizmo)
+                        {
+                                OnUseGizmoStateChanged();
+                        }
 
-			if(!useGizmo) return;
+                        if(allowTransform != previousAllowTransform)
+                        {
+                                OnAllowTransformStateChanged();
+                        }
+
+                        if(!useGizmo) return;
 
 			if(drawOutline != previousDrawOutline)
 			{
@@ -631,17 +641,23 @@ namespace RuntimeGizmos
 			}
 		}
 
-		void TransformSelected()
-		{
-			if(mainTargetRoot != null)
-			{
-				if(nearAxis != Axis.None && WasPointerPressedThisFrame())
-				{
-					if(onGizmoSelected != null) onGizmoSelected(translatingType, nearAxis);
-					activeTransformCoroutine = StartCoroutine(TransformSelected(translatingType));
-				}
-			}
-		}
+                void TransformSelected()
+                {
+                        if(!allowTransform)
+                        {
+                                if(isTransforming) CancelActiveTransformation();
+                                return;
+                        }
+
+                        if(mainTargetRoot != null)
+                        {
+                                if(nearAxis != Axis.None && WasPointerPressedThisFrame())
+                                {
+                                        if(onGizmoSelected != null) onGizmoSelected(translatingType, nearAxis);
+                                        activeTransformCoroutine = StartCoroutine(TransformSelected(translatingType));
+                                }
+                        }
+                }
 		
 		IEnumerator TransformSelected(TransformType transType)
 		{
@@ -661,11 +677,12 @@ namespace RuntimeGizmos
 			float currentSnapRotationAmount = 0;
 			float currentSnapScaleAmount = 0;
 
-			List<ICommand> transformCommands = new List<ICommand>();
-			for(int i = 0; i < targetRootsOrdered.Count; i++)
-			{
-				transformCommands.Add(new TransformCommand(this, targetRootsOrdered[i]));
-			}
+                        List<ICommand> transformCommands = new List<ICommand>();
+                        for(int i = 0; i < targetRootsOrdered.Count; i++)
+                        {
+                                Transform target = targetRootsOrdered[i];
+                                transformCommands.Add(new TransformCommand(this, target));
+                        }
 
 			while(true)
 			{
@@ -734,14 +751,16 @@ namespace RuntimeGizmos
 							}
 						}
 
-						for(int i = 0; i < targetRootsOrdered.Count; i++)
-						{
-							Transform target = targetRootsOrdered[i];
+                                                bool movedAny = false;
+                                                for(int i = 0; i < targetRootsOrdered.Count; i++)
+                                                {
+                                                        Transform target = targetRootsOrdered[i];
 
-							target.Translate(movement, Space.World);
-						}
+                                                        target.Translate(movement, Space.World);
+                                                        movedAny = true;
+                                                }
 
-						SetPivotPointOffset(movement);
+                                                if(movedAny) SetPivotPointOffset(movement);
 					}
 					else if(transType == TransformType.Scale)
 					{
@@ -766,56 +785,59 @@ namespace RuntimeGizmos
 						//WARNING - There is a bug in unity 5.4 and 5.5 that causes InverseTransformDirection to be affected by scale which will break negative scaling. Not tested, but updating to 5.4.2 should fix it - https://issuetracker.unity3d.com/issues/transformdirection-and-inversetransformdirection-operations-are-affected-by-scale
 						Vector3 localAxis = (GetProperTransformSpace() == TransformSpace.Local && nearAxis != Axis.Any) ? mainTargetRoot.InverseTransformDirection(axis) : axis;
 						
-						Vector3 targetScaleAmount = Vector3.one;
-						if(nearAxis == Axis.Any) targetScaleAmount = (ExtVector3.Abs(mainTargetRoot.localScale.normalized) * scaleAmount);
-						else targetScaleAmount = localAxis * scaleAmount;
+                                                Vector3 targetScaleAmount = Vector3.one;
+                                                if(nearAxis == Axis.Any) targetScaleAmount = (ExtVector3.Abs(mainTargetRoot.localScale.normalized) * scaleAmount);
+                                                else targetScaleAmount = localAxis * scaleAmount;
 
-						for(int i = 0; i < targetRootsOrdered.Count; i++)
-						{
-							Transform target = targetRootsOrdered[i];
+                                                bool scaledAny = false;
+                                                for(int i = 0; i < targetRootsOrdered.Count; i++)
+                                                {
+                                                        Transform target = targetRootsOrdered[i];
 
-							Vector3 targetScale = target.localScale + targetScaleAmount;
+                                                        Vector3 targetScale = target.localScale + targetScaleAmount;
 
-							if(pivot == TransformPivot.Pivot)
-							{
-								target.localScale = targetScale;
-							}
-							else if(pivot == TransformPivot.Center)
-							{
-								if(scaleType == ScaleType.FromPoint)
-								{
-									target.SetScaleFrom(originalPivot, targetScale);
-								}
-								else if(scaleType == ScaleType.FromPointOffset)
-								{
-									target.SetScaleFromOffset(originalPivot, targetScale);
-								}
-							}
-						}
+                                                        if(pivot == TransformPivot.Pivot)
+                                                        {
+                                                                target.localScale = targetScale;
+                                                        }
+                                                        else if(pivot == TransformPivot.Center)
+                                                        {
+                                                                if(scaleType == ScaleType.FromPoint)
+                                                                {
+                                                                        target.SetScaleFrom(originalPivot, targetScale);
+                                                                }
+                                                                else if(scaleType == ScaleType.FromPointOffset)
+                                                                {
+                                                                        target.SetScaleFromOffset(originalPivot, targetScale);
+                                                                }
+                                                        }
 
-						totalScaleAmount += scaleAmount;
-					}
-					else if(transType == TransformType.Rotate)
-					{
-						float rotateAmount = 0;
-						Vector3 rotationAxis = axis;
+                                                        scaledAny = true;
+                                                }
 
-						if(nearAxis == Axis.Any)
-						{
-							Vector2 pointerDelta = GetPointerDelta();
-							Vector3 rotation = transform.TransformDirection(new Vector3(pointerDelta.y, -pointerDelta.x, 0));
-							Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
-							rotateAmount *= allRotateSpeedMultiplier;
-						}else{
-							if(circularRotationMethod)
-							{
-								float angle = Vector3.SignedAngle(previousMousePosition - originalPivot, mousePosition - originalPivot, axis);
-								rotateAmount = angle * rotateSpeedMultiplier;
-							}else{
-								Vector3 projected = (nearAxis == Axis.Any || ExtVector3.IsParallel(axis, planeNormal)) ? planeNormal : Vector3.Cross(axis, planeNormal);
-								rotateAmount = (ExtVector3.MagnitudeInDirection(mousePosition - previousMousePosition, projected) * (rotateSpeedMultiplier * 100f)) / GetDistanceMultiplier();
-							}
-						}
+                                                if(scaledAny) totalScaleAmount += scaleAmount;
+                                        }
+                                        else if(transType == TransformType.Rotate)
+                                        {
+                                                float rotateAmount = 0;
+                                                Vector3 rotationAxis = axis;
+
+                                                if(nearAxis == Axis.Any)
+                                                {
+                                                        Vector2 pointerDelta = GetPointerDelta();
+                                                        Vector3 rotation = transform.TransformDirection(new Vector3(pointerDelta.y, -pointerDelta.x, 0));
+                                                        Quaternion.Euler(rotation).ToAngleAxis(out rotateAmount, out rotationAxis);
+                                                        rotateAmount *= allRotateSpeedMultiplier;
+                                                }else{
+                                                        if(circularRotationMethod)
+                                                        {
+                                                                float angle = Vector3.SignedAngle(previousMousePosition - originalPivot, mousePosition - originalPivot, axis);
+                                                                rotateAmount = angle * rotateSpeedMultiplier;
+                                                        }else{
+                                                                Vector3 projected = (nearAxis == Axis.Any || ExtVector3.IsParallel(axis, planeNormal)) ? planeNormal : Vector3.Cross(axis, planeNormal);
+                                                                rotateAmount = (ExtVector3.MagnitudeInDirection(mousePosition - previousMousePosition, projected) * (rotateSpeedMultiplier * 100f)) / GetDistanceMultiplier();
+                                                        }
+                                                }
 
 						if(isSnapping && rotationSnap > 0)
 						{
@@ -832,47 +854,53 @@ namespace RuntimeGizmos
 							}
 						}
 
-						for(int i = 0; i < targetRootsOrdered.Count; i++)
-						{
-							Transform target = targetRootsOrdered[i];
+                                                bool rotatedAny = false;
+                                                for(int i = 0; i < targetRootsOrdered.Count; i++)
+                                                {
+                                                        Transform target = targetRootsOrdered[i];
 
-							if(pivot == TransformPivot.Pivot)
-							{
-								target.Rotate(rotationAxis, rotateAmount, Space.World);
-							}
-							else if(pivot == TransformPivot.Center)
-							{
-								target.RotateAround(originalPivot, rotationAxis, rotateAmount);
-							}
-						}
+                                                        if(pivot == TransformPivot.Pivot)
+                                                        {
+                                                                target.Rotate(rotationAxis, rotateAmount, Space.World);
+                                                        }
+                                                        else if(pivot == TransformPivot.Center)
+                                                        {
+                                                                target.RotateAround(originalPivot, rotationAxis, rotateAmount);
+                                                        }
 
-						totalRotationAmount *= Quaternion.Euler(rotationAxis * rotateAmount);
-					}
-				}
+                                                        rotatedAny = true;
+                                                }
 
-				previousMousePosition = mousePosition;
+                                                if(rotatedAny) totalRotationAmount *= Quaternion.Euler(rotationAxis * rotateAmount);
+                                        }
+                                }
 
-				yield return null;
-			}
+                                previousMousePosition = mousePosition;
 
-			for(int i = 0; i < transformCommands.Count; i++)
-			{
-				((TransformCommand)transformCommands[i]).StoreNewTransformValues();
-			}
-			CommandGroup commandGroup = new CommandGroup();
-			commandGroup.Set(transformCommands);
-			UndoRedoManager.Insert(commandGroup);
+                                yield return null;
+                        }
 
-			totalRotationAmount = Quaternion.identity;
-			totalScaleAmount = 0;
-			isTransforming = false;
-			SetTranslatingAxis(transformType, Axis.None);
+                        if(transformCommands.Count > 0)
+                        {
+                                for(int i = 0; i < transformCommands.Count; i++)
+                                {
+                                        ((TransformCommand)transformCommands[i]).StoreNewTransformValues();
+                                }
+                                CommandGroup commandGroup = new CommandGroup();
+                                commandGroup.Set(transformCommands);
+                                UndoRedoManager.Insert(commandGroup);
+                        }
 
-			if(onGizmoDeselected != null) onGizmoDeselected();
-			activeTransformCoroutine = null;
+                        totalRotationAmount = Quaternion.identity;
+                        totalScaleAmount = 0;
+                        isTransforming = false;
+                        SetTranslatingAxis(transformType, Axis.None);
 
-			SetPivotPoint();
-		}
+                        if(onGizmoDeselected != null) onGizmoDeselected();
+                        activeTransformCoroutine = null;
+
+                        SetPivotPoint();
+                }
 
 		void CancelActiveTransformation()
 		{
@@ -1128,38 +1156,62 @@ namespace RuntimeGizmos
 			}
 		}
 
-		public bool UseGizmo
-		{
-			get {return useGizmo;}
-			set {SetUseGizmo(value);}
-		}
+                public bool UseGizmo
+                {
+                        get {return useGizmo;}
+                        set {SetUseGizmo(value);}
+                }
 
-		public void SetUseGizmo(bool shouldUseGizmo)
-		{
-			if(useGizmo == shouldUseGizmo) return;
+                public bool AllowTransform
+                {
+                        get {return allowTransform;}
+                        set {SetAllowTransform(value);}
+                }
 
-			useGizmo = shouldUseGizmo;
-			OnUseGizmoStateChanged();
-		}
+                public void SetUseGizmo(bool shouldUseGizmo)
+                {
+                        if(useGizmo == shouldUseGizmo) return;
 
-		void OnUseGizmoStateChanged()
-		{
-			previousUseGizmo = useGizmo;
+                        useGizmo = shouldUseGizmo;
+                        OnUseGizmoStateChanged();
+                }
 
-			if(!useGizmo)
-			{
-				CancelActiveTransformation();
-			}
-			else if(mainTargetRoot != null)
-			{
-				SetPivotPoint();
-			}
-		}
+                public void SetAllowTransform(bool shouldAllowTransform)
+                {
+                        if(allowTransform == shouldAllowTransform) return;
 
-		void OnDrawOutlineChanged()
-		{
-			ApplyOutlineStateToHighlightedRenderers();
-		}
+                        allowTransform = shouldAllowTransform;
+                        OnAllowTransformStateChanged();
+                }
+
+                void OnUseGizmoStateChanged()
+                {
+                        previousUseGizmo = useGizmo;
+
+                        if(!useGizmo)
+                        {
+                                CancelActiveTransformation();
+                        }
+                        else if(mainTargetRoot != null)
+                        {
+                                SetPivotPoint();
+                        }
+                }
+
+                void OnAllowTransformStateChanged()
+                {
+                        previousAllowTransform = allowTransform;
+
+                        if(!allowTransform)
+                        {
+                                CancelActiveTransformation();
+                        }
+                }
+
+                void OnDrawOutlineChanged()
+                {
+                        ApplyOutlineStateToHighlightedRenderers();
+                }
 
 		void ApplyOutlineStateToHighlightedRenderers()
 		{
