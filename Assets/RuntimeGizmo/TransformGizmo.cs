@@ -275,13 +275,28 @@ namespace RuntimeGizmos
 		public bool isTransforming {get; private set;}
 		public float totalScaleAmount {get; private set;}
 		public Quaternion totalRotationAmount {get; private set;}
-		public Axis translatingAxis {get {return nearAxis;}}
-		public Axis translatingAxisPlane {get {return planeAxis;}}
-		public bool hasTranslatingAxisPlane {get {return translatingAxisPlane != Axis.None && translatingAxisPlane != Axis.Any;}}
-		public TransformType transformingType {get {return translatingType;}}
+                public Axis translatingAxis {get {return nearAxis;}}
+                public Axis translatingAxisPlane {get {return planeAxis;}}
+                public bool hasTranslatingAxisPlane {get {return translatingAxisPlane != Axis.None && translatingAxisPlane != Axis.Any;}}
+                public TransformType transformingType {get {return translatingType;}}
 
-		public Vector3 pivotPoint {get; private set;}
-		Vector3 totalCenterPivotPoint;
+                public void SetTransformType(TransformType type)
+                {
+                        transformType = type;
+
+                        if(!isTransforming)
+                        {
+                                translatingType = transformType;
+                        }
+
+                        if(transformType == TransformType.Scale && pivot == TransformPivot.Pivot)
+                        {
+                                scaleType = ScaleType.FromPoint;
+                        }
+                }
+
+                public Vector3 pivotPoint {get; private set;}
+                Vector3 totalCenterPivotPoint;
 
 		public Transform mainTargetRoot {get {return (targetRootsOrdered.Count > 0) ? (useFirstSelectedAsMain) ? targetRootsOrdered[0] : targetRootsOrdered[targetRootsOrdered.Count - 1] : null;}}
 
@@ -551,17 +566,17 @@ namespace RuntimeGizmos
 #endif
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-			if(WasActionPressedThisFrame(inputActions.SetMoveType)) transformType = TransformType.Move;
-			else if(WasActionPressedThisFrame(inputActions.SetRotateType)) transformType = TransformType.Rotate;
-			else if(WasActionPressedThisFrame(inputActions.SetScaleType)) transformType = TransformType.Scale;
-			//else if(WasActionPressedThisFrame(inputActions.SetRectToolType)) type = TransformType.RectTool;
-			else if(WasActionPressedThisFrame(inputActions.SetAllTransformType)) transformType = TransformType.All;
+                        if(WasActionPressedThisFrame(inputActions.SetMoveType)) SetTransformType(TransformType.Move);
+                        else if(WasActionPressedThisFrame(inputActions.SetRotateType)) SetTransformType(TransformType.Rotate);
+                        else if(WasActionPressedThisFrame(inputActions.SetScaleType)) SetTransformType(TransformType.Scale);
+                        //else if(WasActionPressedThisFrame(inputActions.SetRectToolType)) type = TransformType.RectTool;
+                        else if(WasActionPressedThisFrame(inputActions.SetAllTransformType)) SetTransformType(TransformType.All);
 #else
-			if(GizmoInput.GetKeyDown(SetMoveType)) transformType = TransformType.Move;
-			else if(GizmoInput.GetKeyDown(SetRotateType)) transformType = TransformType.Rotate;
-			else if(GizmoInput.GetKeyDown(SetScaleType)) transformType = TransformType.Scale;
-			//else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
-			else if(GizmoInput.GetKeyDown(SetAllTransformType)) transformType = TransformType.All;
+                        if(GizmoInput.GetKeyDown(SetMoveType)) SetTransformType(TransformType.Move);
+                        else if(GizmoInput.GetKeyDown(SetRotateType)) SetTransformType(TransformType.Rotate);
+                        else if(GizmoInput.GetKeyDown(SetScaleType)) SetTransformType(TransformType.Scale);
+                        //else if(GizmoInput.GetKeyDown(SetRectToolType)) type = TransformType.RectTool;
+                        else if(GizmoInput.GetKeyDown(SetAllTransformType)) SetTransformType(TransformType.All);
 #endif
 
 			if(!isTransforming) translatingType = transformType;
