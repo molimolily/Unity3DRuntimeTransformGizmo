@@ -643,17 +643,18 @@ namespace RuntimeGizmos
 
                 void TransformSelected()
                 {
-                        if(!allowTransform)
-                        {
-                                if(isTransforming) CancelActiveTransformation();
-                                return;
-                        }
-
                         if(mainTargetRoot != null)
                         {
                                 if(nearAxis != Axis.None && WasPointerPressedThisFrame())
                                 {
                                         if(onGizmoSelected != null) onGizmoSelected(translatingType, nearAxis);
+
+                                        if(!allowTransform)
+                                        {
+                                                if(isTransforming) CancelActiveTransformation();
+                                                return;
+                                        }
+
                                         activeTransformCoroutine = StartCoroutine(TransformSelected(translatingType));
                                 }
                         }
